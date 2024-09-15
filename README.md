@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
       /* ...handle short option "-a"... */
     } else if (copt_opt(&opt, "longopt")) {
       /* ...handle long option "--longopt"... */
-    } else if (copt_opt(&opt, "o|outfile)) {
+    } else if (copt_opt(&opt, "o|outfile")) {
       /* ...handle both short option "-o" and long option "--outfile"... */
       outfile = copt_arg(&copt);
     } else {
