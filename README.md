@@ -32,8 +32,8 @@ int main(int argc, char *argv[])
 
 ## Features
 
-* Public domain license.  I appreciate it if you credit me, but by no means
-  is it required.  Do what you want with it.
+* [Public domain license](LICENSE).  I appreciate it if you credit me, but
+  by no means is it required.  Do what you want with it.
 * No heap allocations.
 * Handles short options (e.g. `-a`) and long options (e.g. `--like-this`).
 * Short options can be grouped (e.g. `-a -b -c` can be given as `-abc`).
