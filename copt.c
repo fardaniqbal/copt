@@ -12,7 +12,7 @@ copt_init(int argc, char **argv, int reorder)
   opt.argc = argc;
   opt.argv = argv;
   opt.idx = 0;
-  opt.subidx = -1;
+  opt.subidx = 0;
   opt.shortopt[0] = '\0';
   opt.reorder = !!reorder;
   return opt;
@@ -40,19 +40,23 @@ copt_done(struct copt *opt)
     return 1;
   if (opt->subidx > 0) { /* in the middle of grouped short options */
     assert(opt->idx < opt->argc);
+    assert(opt->argv[opt->idx][opt->subidx] != '\0');
+    opt->subidx++;
     if (opt->argv[opt->idx][opt->subidx] == '\0') /* end of group */
-      opt->idx++, opt->subidx = -1;
+      opt->idx++, opt->subidx = 0;
     else {
       opt->shortopt[0] = '-';
       opt->shortopt[1] = opt->argv[opt->idx][opt->subidx];
       opt->shortopt[2] = '\0';
       opt->curopt = opt->shortopt;
     }
+    if (opt->idx >= opt->argc)
+      return (opt->shortopt[0] = '\0'), 1;
     return 0;
-  }
-  if (opt->subidx < 0) { /* done with last argv elem */
+  } else {               /* done with previous argv elem */
     int i = ++opt->idx;
-    assert(i < opt->argc);
+    if (i >= opt->argc)
+      return (opt->shortopt[0] = '\0'), 1;
     if (!strcmp(opt->argv[i], "--")) /* just "--" means done */
       return opt->idx++, 1;
     if (opt->reorder)
@@ -61,19 +65,27 @@ copt_done(struct copt *opt)
       return 1;
     if (opt->argv[i][1] == '\0') /* arg is just "-" */
       return 1;
-    if (opt->argv[i][1] != '-') /* found short options */
-      return (opt->subidx = 1), 0;
+    if (opt->argv[i][1] != '-') { /* found short options */
+      opt->subidx = 1;
+      opt->shortopt[0] = '-';
+      opt->shortopt[1] = opt->argv[opt->idx][opt->subidx];
+      opt->shortopt[2] = '\0';
+      opt->curopt = opt->shortopt;
+      return 0;
+    }
     assert(opt->argv[i][0] == '-' && opt->argv[i][1] == '-');
-    opt->subidx = -1;
+    opt->subidx = 0;
     opt->curopt = opt->argv[i];
     return 0; /* found long option */
   }
+# if 0
   if (opt->subidx > 0) { /* in the middle of grouped short options */
     int arglen = (int) strlen(opt->argv[opt->idx]);
     if (++opt->subidx < arglen) {
       /* TODO */
     }
   }
+#endif
   /* TODO */
   return 0;
 }
@@ -104,20 +116,19 @@ copt_arg(struct copt *opt)
 {
   if (opt->subidx > 0) { /* in (possibly grouped) short option */
     int subidx = opt->subidx;
-    opt->subidx = -1;
+    opt->subidx = 0;
     if (opt->argv[opt->idx][subidx+1] != '\0')
-      return opt->argv[opt->idx++] + subidx + 1;
-    if (++opt->idx >= opt->argc || opt->argv[opt->idx][0] == '-')
-      return NULL;
+      return opt->argv[opt->idx] + subidx + 1;
   } else {               /* in --long option */
     char *res;
-    if ((res = strchr(opt->argv[opt->idx++], '=')) != NULL)
+    if ((res = strchr(opt->argv[opt->idx], '=')) != NULL)
       return res+1;
-    if (opt->idx >= opt->argc || opt->argv[opt->idx][0] == '-')
-      return NULL;
   }
+  if (opt->idx+1 >= opt->argc || opt->argv[opt->idx+1][0] == '-')
+    return NULL;
+  opt->idx++;
   assert(opt->idx < opt->argc);
-  return opt->argv[opt->idx++];
+  return opt->argv[opt->idx];
 }
 
 int
