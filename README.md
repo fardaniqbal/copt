@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
       /* ...handle long option "--longopt"... */
     } else if (copt_opt(&opt, "o|outfile")) {
       /* ...handle both short option "-o" and long option "--outfile"... */
-      outfile = copt_arg(&copt);
+      outfile = copt_arg(&opt);
     } else {
       fprintf(stderr, "unrecognized option '%s'\n", copt_curopt(&opt));
       usage();
