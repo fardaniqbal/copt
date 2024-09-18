@@ -128,7 +128,9 @@ copt_arg(struct copt *opt)
     if ((res = strchr(opt->argv[opt->idx], '=')) != NULL)
       return res+1;
   }
-  if (opt->idx+1 >= opt->argc || opt->argv[opt->idx+1][0] == '-')
+  /* Don't mistake a single '-' as an option. */
+  if (opt->idx+1 >= opt->argc || (opt->argv[opt->idx+1][0] == '-' &&
+                                  opt->argv[opt->idx+1][1] != '\0'))
     return NULL;
   opt->idx++;
   assert(opt->idx < opt->argc);
