@@ -15,7 +15,7 @@
        ... handle both short option "-o" and long option "--outfile" ...
        outfile = copt_arg(&opt);
      } else {
-       fprintf(stderr, "unrecognized option '%s'\n", copt_curopt(&opt));
+       fprintf(stderr, "unknown option '%s'\n", copt_curopt(&opt));
        usage();
      }
    }
@@ -24,8 +24,7 @@
 #ifndef COPT_H_INCLUDED_
 #define COPT_H_INCLUDED_
 
-struct copt
-{
+struct copt {
   char *curopt;
   char **argv;
   int argc;
