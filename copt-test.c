@@ -386,7 +386,7 @@ main(void)
   expect_arg(&tc, "nonopt2");
   test_verify(&tc);
 
-  /* unknown options */
+  /* unknown short and long options */
   for (i = 0; i < 2; i++) {
     static const char *unknown[2] = { "-q", "--unknown-opt" };
     test_begin(&tc, 0, unknown[i], NULL);
@@ -461,6 +461,93 @@ main(void)
     expect_arg(&tc, "nonopt2");
     test_verify(&tc);
   }
+
+  /* unknown options grouped with known options */
+  test_begin(&tc, 0, "-qx", NULL);
+  expect_badopt(&tc, "-q");
+  expect_opt(&tc, "x");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-qs", "sarg", NULL);
+  expect_badopt(&tc, "-q");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "sarg");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-qs", NULL);
+  expect_badopt(&tc, "-q");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, NULL);
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-yqx", NULL);
+  expect_opt(&tc, "y");
+  expect_badopt(&tc, "-q");
+  expect_opt(&tc, "x");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-zqs", "sarg", NULL);
+  expect_opt(&tc, "z");
+  expect_badopt(&tc, "-q");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "sarg");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-xqs", NULL);
+  expect_opt(&tc, "x");
+  expect_badopt(&tc, "-q");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, NULL);
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-zxyqx", NULL);
+  expect_opt(&tc, "z");
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "y");
+  expect_badopt(&tc, "-q");
+  expect_opt(&tc, "x");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-xy", "-zqs", "sarg", NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "y");
+  expect_opt(&tc, "z");
+  expect_badopt(&tc, "-q");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "sarg");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-xy", "-zqs", "sarg", "arg1", "arg2", NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "y");
+  expect_opt(&tc, "z");
+  expect_badopt(&tc, "-q");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "sarg");
+  expect_arg(&tc, "arg1");
+  expect_arg(&tc, "arg2");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "--longopt", "-xyzqs", NULL);
+  expect_opt(&tc, "longopt");
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "y");
+  expect_opt(&tc, "z");
+  expect_badopt(&tc, "-q");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, NULL);
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "--longopt", "-xyzqs", "arg1", "arg2", NULL);
+  expect_opt(&tc, "longopt");
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "y");
+  expect_opt(&tc, "z");
+  expect_badopt(&tc, "-q");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "arg1");
+  expect_arg(&tc, "arg2");
+  test_verify(&tc);
 
   /* short opts with args */
   test_begin(&tc, 0, "-s", "sarg", NULL);
@@ -545,6 +632,198 @@ main(void)
   expect_opt(&tc, "z");
   expect_arg(&tc, "nonopt1");
   expect_arg(&tc, "nonopt2");
+  test_verify(&tc);
+
+  /* don't confuse optargs with actual options */
+  test_begin(&tc, 0, "-sx", NULL);
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "x");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-sxy", NULL);
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "xy");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-s", "-x", NULL);
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, NULL);
+  expect_opt(&tc, "x");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-s-x", NULL);
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "-x");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-sx", "nonopt1", "nonopt2", NULL);
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "x");
+  expect_arg(&tc, "nonopt1");
+  expect_arg(&tc, "nonopt2");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-syz", "-x", NULL);
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "yz");
+  expect_opt(&tc, "x");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-x", "-syz", "-z", NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "yz");
+  expect_opt(&tc, "z");
+  test_verify(&tc);
+
+  /* don't confuse optargs with actual options when grouped */
+  test_begin(&tc, 0, "-xsx", NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "x");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-xsx", "foo", "bar", NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "x");
+  expect_arg(&tc, "foo");
+  expect_arg(&tc, "bar");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-xyzsxs", NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "y");
+  expect_opt(&tc, "z");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "xs");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-xyzsxs", "foo", "bar", NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "y");
+  expect_opt(&tc, "z");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "xs");
+  expect_arg(&tc, "foo");
+  expect_arg(&tc, "bar");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-xs", "-y", NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, NULL);
+  expect_opt(&tc, "y");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-xs", "-y", "foo", "bar", NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, NULL);
+  expect_opt(&tc, "y");
+  expect_arg(&tc, "foo");
+  expect_arg(&tc, "bar");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-xyzs", "-xy", NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "y");
+  expect_opt(&tc, "z");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "y");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-xyzs", "-xy", "foo", "bar", NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "y");
+  expect_opt(&tc, "z");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "y");
+  expect_arg(&tc, "foo");
+  expect_arg(&tc, "bar");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "--longopt", "-x", "-syz", "-z", NULL);
+  expect_opt(&tc, "longopt");
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "yz");
+  expect_opt(&tc, "z");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-x", "--longopt", "-syz", "-z", NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "longopt");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "yz");
+  expect_opt(&tc, "z");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-x", "--longopt", "-syz", "-z", "foo", "bar", NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "longopt");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "yz");
+  expect_opt(&tc, "z");
+  expect_arg(&tc, "foo");
+  expect_arg(&tc, "bar");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-s", "--longopt", NULL);
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, NULL);
+  expect_opt(&tc, "longopt");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-s", "--longopt", "foo", "bar", NULL);
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, NULL);
+  expect_opt(&tc, "longopt");
+  expect_arg(&tc, "foo");
+  expect_arg(&tc, "bar");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-slongopt", NULL);
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "longopt");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-s--longopt", NULL);
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "--longopt");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-s--longopt", "foo", "bar", NULL);
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "--longopt");
+  expect_arg(&tc, "foo");
+  expect_arg(&tc, "bar");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-x", "--longopt", "-s", "--longopt", NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "longopt");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, NULL);
+  expect_opt(&tc, "longopt");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-x", "--longopt", "-s--longopt", NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "longopt");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "--longopt");
+  test_verify(&tc);
+
+  test_begin(&tc, 0, "-x", "--longopt", "-slongopt", NULL);
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "longopt");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "longopt");
   test_verify(&tc);
 
   /* long opts with args */
