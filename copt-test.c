@@ -85,6 +85,7 @@ struct testcase {
   struct arg actual[64];
   size_t argc;
   char *argv[64];
+  char *argv_copy[64]; /* because argv might get reordered */
 };
 
 static void
@@ -182,10 +183,11 @@ test_begin(struct testcase *tc, int reorder, ...)
   } while (tc->argv[tc->argc++] != NULL);
   va_end(ap);
   assert(tc->argc > 0);
+  assert(tc->argv[tc->argc-1] == NULL);
+  memcpy(tc->argv_copy, tc->argv, tc->argc * sizeof *tc->argv);
   tc->argc--;
-  assert(tc->argv[tc->argc] == NULL);
 
-  opt = copt_init((int) tc->argc, tc->argv, reorder);
+  opt = copt_init((int) tc->argc, tc->argv_copy, reorder);
   while (!copt_done(&opt)) {
     if (copt_opt(&opt, "x")) {
       actual_opt(tc, "x");
@@ -211,7 +213,7 @@ test_begin(struct testcase *tc, int reorder, ...)
     }
   }
   for (i = copt_idx(&opt); i < tc->argc; i++)
-    actual_arg(tc, tc->argv[i]);
+    actual_arg(tc, tc->argv_copy[i]);
 }
 
 #define test_begin (test_file = __FILE__, test_line = __LINE__, test_begin)
@@ -253,6 +255,13 @@ test_verify(struct testcase *tc)
   printf("%s:%d: ", test_file, test_line);
   print_args(tc->argc, tc->argv, -1);
   printf("\n");
+  for (i = 0; i < tc->argc && !strcmp(tc->argv[i], tc->argv_copy[i]); i++)
+    continue;
+  if (i != tc->argc) {
+    printf("(reordered to ");
+    print_args(tc->argc, tc->argv_copy, -1);
+    printf("\n");
+  }
   if (tc->expect_cnt != tc->actual_cnt)
     printf("  expected %lu args, found %lu\n",
            (long) tc->expect_cnt, (long) tc->actual_cnt);
