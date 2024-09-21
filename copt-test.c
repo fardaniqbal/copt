@@ -260,7 +260,7 @@ test_verify(struct testcase *tc)
   if (i != tc->argc) {
     printf("(reordered to ");
     print_args(tc->argc, tc->argv_copy, -1);
-    printf("\n");
+    printf(")\n");
   }
   if (tc->expect_cnt != tc->actual_cnt)
     printf("  expected %lu args, found %lu\n",
