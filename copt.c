@@ -25,6 +25,7 @@ copt_init(int argc, char **argv, int reorder)
   opt.argv = argv;
   opt.idx = 0;
   opt.subidx = 0;
+  opt.argidx = 0;
   opt.shortopt[0] = '\0';
   opt.reorder = !!reorder;
   return opt;
@@ -39,13 +40,39 @@ copt_set_shortopt(struct copt *opt, char c)
   return c == '\0' ? NULL : opt->shortopt;
 }
 
+/* Rotate ARGC items in array ARGV one index to the right. */
+static void
+copt_rotate_right(char **argv, size_t argc)
+{
+  char *arg;
+  assert(argc > 0);
+  arg = argv[argc-1];
+  memmove(argv+1, argv, (argc-1) * sizeof *argv);
+  *argv = arg;
+}
+
+static void
+copt_reorder_opt(struct copt *opt)
+{
+  int i = opt->idx;
+  opt->argidx = 0;
+  for (; i < opt->argc && strcmp(opt->argv[i], "--"); i++)
+    if (opt->argv[i][0] == '-' && opt->argv[i][1] != '\0')
+      break;
+  if (i >= opt->argc || !strcmp(opt->argv[i++], "--"))
+    return;
+  copt_rotate_right(opt->argv + opt->idx, i - opt->idx);
+  if (i >= opt->argc || opt->argv[i][0] != '-' || opt->argv[i][1] == '\0')
+    opt->argidx = i;
+}
+
 int
 copt_done(struct copt *opt)
 {
   int i = opt->idx;
   opt->curopt = NULL;
   copt_dbg("\n");
-  copt_dbg("entering (idx=%d, subidx=%d)\n", opt->idx, opt->subidx);
+  copt_dbg("*** entering (idx=%d, subidx=%d)\n", opt->idx, opt->subidx);
   if (opt->idx >= opt->argc)
     return 1;
   if (opt->subidx > 0) {  /* in the middle of grouped short options */
@@ -71,7 +98,7 @@ copt_done(struct copt *opt)
     return copt_dbg("found '--', done\n"), opt->idx++, 1;
   copt_dbg("reorder? %d\n", opt->reorder);
   if (opt->reorder)
-    ; /* TODO: reorder argv here. */
+    copt_reorder_opt(opt);
   copt_dbg("checking for non-option\n");
   if (opt->argv[i][0] != '-') /* found non-option */
     return 1;
@@ -110,7 +137,7 @@ copt_opt(struct copt *opt, const char *option)
     end = strchr(start, '|');
     end = end ? end : start + strlen(start);
     if (end-start == arglen && !memcmp(arg, start, arglen))
-      return copt_dbg("matched '%s'\n", option), 1;
+      return 1;
   }
   return 0;
 }
@@ -118,20 +145,23 @@ copt_opt(struct copt *opt, const char *option)
 char *
 copt_arg(struct copt *opt)
 {
-  if (opt->subidx > 0) { /* in (possibly grouped) short option */
-    int subidx = opt->subidx;
-    opt->subidx = 0;
-    if (opt->argv[opt->idx][subidx+1] != '\0')
-      return opt->argv[opt->idx] + subidx + 1;
-  } else {               /* in --long option */
-    char *res;
-    if ((res = strchr(opt->argv[opt->idx], '=')) != NULL)
-      return res+1;
-  }
-  /* Don't mistake a single '-' as an option. */
+  int subidx = opt->subidx;
+  int argidx = opt->argidx;
+  char ch, *eq;
+  opt->subidx = opt->argidx = 0;
+
+  if (subidx > 0) {        /* in (possibly grouped) short option */
+    if ((ch = opt->argv[opt->idx][subidx+1]) != '\0')
+      return opt->argv[opt->idx] + subidx + 1 + (ch == '=');
+  } else if ((eq = strchr(opt->argv[opt->idx], '=')) != NULL)
+    return eq+1;           /* --long-option=ARG */
+  if (argidx >= opt->argc) /* reordered opt, no arg available */
+    return NULL;
+  if (argidx > opt->idx)   /* reordered opt, arg available */
+    copt_rotate_right(opt->argv + opt->idx + 1, argidx - opt->idx);
   if (opt->idx+1 >= opt->argc || (opt->argv[opt->idx+1][0] == '-' &&
                                   opt->argv[opt->idx+1][1] != '\0'))
-    return NULL;
+    return NULL; /* not optarg if starts with '-' but isn't _only_ '-' */
   opt->idx++;
   assert(opt->idx < opt->argc);
   return opt->argv[opt->idx];

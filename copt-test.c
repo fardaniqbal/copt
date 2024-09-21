@@ -276,7 +276,7 @@ run_copt_tests(int reorder)
   size_t i;
   struct testcase tc;
 
-  /* basics */
+  /* test basic functionality */
   test_begin(&tc, reorder, NULL);
   assert(tc.actual_cnt == 0);
   test_verify(&tc);

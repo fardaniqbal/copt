@@ -30,6 +30,7 @@ struct copt {
   int argc;
   int idx;
   int subidx;
+  int argidx;         /* index of opt's (potential) arg if reordering */
   char shortopt[3];
   unsigned reorder:1;
 };
