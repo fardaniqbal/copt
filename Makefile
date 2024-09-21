@@ -6,6 +6,8 @@ target_os ?= $(shell uname -o | tr [:upper:] [:lower:])
 bin_suffix := $(and $(filter msys% mingw% cygwin% win%,$(target_os)),.exe)
 
 all: copt-test$(bin_suffix)
+check: copt-test$(bin_suffix)
+	./$<
 copt-test$(bin_suffix): copt.o copt-test.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 copt-test.o: copt-test.c copt.h

@@ -131,7 +131,7 @@ copt_opt(struct copt *opt, const char *option)
     arg += opt->subidx, arglen = 1; 
   else                 /* in --long option */
     arg += 2, arglen = strlen(arg);
-  if ((end = strchr(arg, '=')) != NULL)
+  if ((end = strchr(arg, '=')) != NULL) /* --opt=ARG form */
     arglen = arglen < (size_t) (end-arg) ? arglen : end-arg;
   for (start = option; *start != '\0'; start = end + (*end != '\0')) {
     end = strchr(start, '|');
