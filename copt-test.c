@@ -239,7 +239,6 @@ test_verify(struct testcase *tc)
   printf(": FAIL\n\n%s:%d: ", __FILE__, test_line);
   print_args(tc->argc, tc->argv, 0);
   printf("\n");
-  copt_dbg_dump();
   for (i = 0; i < tc->argc && !strcmp(tc->argv[i], tc->argv_copy[i]); i++)
     continue;
   if (i != tc->argc) {
@@ -247,6 +246,7 @@ test_verify(struct testcase *tc)
     print_args(tc->argc, tc->argv_copy, 0);
     printf(")\n");
   }
+  copt_dbg_dump();
   if (tc->expect_cnt != tc->actual_cnt)
     printf("  expected %lu args, found %lu\n",
            (long) tc->expect_cnt, (long) tc->actual_cnt);
