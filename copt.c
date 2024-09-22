@@ -10,15 +10,18 @@
 
 #if 0
 static void copt_dbg_reset(void) {}
-static void copt_dbg(const char *fmt, ...) {}
+static void copt_dbg(const char *fmt, ...) { (void) fmt; }
+static void copt_dbg_args(struct copt *opt) { (void) opt; }
 void copt_dbg_dump(void) {}
 #else
 # include <stdarg.h>
 # include <stdio.h>
 # define copt_dbg \
   (copt_dbg_marksrcpos(__FILE__, __LINE__, __func__), copt_dbg_printf)
+# define copt_dbg_args \
+  (copt_dbg_marksrcpos(__FILE__, __LINE__, __func__), copt_dbg_args_)
 
-static char copt_dbg_buf[2048];
+static char copt_dbg_buf[8192];
 static size_t copt_dbg_pos;
 
 static void
@@ -82,6 +85,15 @@ copt_dbg_dump(void)
          copt_dbg_buf[strlen(copt_dbg_buf) - 1] == '\n' ? "" : "\n");
   copt_dbg_reset();
 }
+
+static void
+copt_dbg_args_(struct copt *opt)
+{
+  int i;
+  for (i = 0; i < opt->argc; i++)
+    copt_dbg_puts("'"), copt_dbg_puts(opt->argv[i]), copt_dbg_puts("' ");
+  copt_dbg_puts("\n");
+}
 #endif
 
 struct copt
@@ -124,15 +136,20 @@ static void
 copt_reorder_opt(struct copt *opt)
 {
   int i = opt->idx;
+  copt_dbg("entering reorder (previous argidx=%d)...\n", opt->argidx);
   opt->argidx = 0;
   for (; i < opt->argc && strcmp(opt->argv[i], "--"); i++)
     if (opt->argv[i][0] == '-' && opt->argv[i][1] != '\0')
       break;
-  if (i >= opt->argc || !strcmp(opt->argv[i++], "--"))
+  if (i >= opt->argc || !strcmp(opt->argv[i++], "--")) {
+    copt_dbg("skipping reorder\n");
     return;
+  }
   copt_rotate_right(opt->argv + opt->idx, i - opt->idx);
+  copt_dbg("rotated args from %d to %d:\n", opt->idx, i);
+  copt_dbg_args(opt);
   if (i >= opt->argc || opt->argv[i][0] != '-' || opt->argv[i][1] == '\0')
-    opt->argidx = i;
+    copt_dbg("setting new argidx=%d\n", i), opt->argidx = i;
 }
 
 int
@@ -195,6 +212,8 @@ copt_opt(struct copt *opt, const char *option)
   char *arg = opt->argv[opt->idx];
   size_t arglen;
   assert((arg && arg[0] == '-' && arg[1] != '\0') || !!!"not option");
+  copt_dbg("entering (needle=%s, idx=%d, subidx=%d, argidx=%d)\n",
+           option, opt->idx, opt->subidx, opt->argidx);
 
   if (opt->subidx > 0) /* in (possibly grouped) short option */
     arg += opt->subidx, arglen = 1; 
@@ -206,8 +225,9 @@ copt_opt(struct copt *opt, const char *option)
     end = strchr(start, '|');
     end = end ? end : start + strlen(start);
     if (end-start == arglen && !memcmp(arg, start, arglen))
-      return 1;
+      return copt_dbg("found matching opt '%s'\n", arg), 1;
   }
+  copt_dbg("no match in '%s'\n", option);
   return 0;
 }
 
@@ -218,6 +238,8 @@ copt_arg(struct copt *opt)
   int argidx = opt->argidx;
   char ch, *eq;
   opt->subidx = opt->argidx = 0;
+  copt_dbg("entering (idx=%d, subidx=%d, argidx=%d)\n",
+           opt->idx, opt->subidx, opt->argidx);
 
   if (subidx > 0) {        /* in (possibly grouped) short option */
     if ((ch = opt->argv[opt->idx][subidx+1]) != '\0')
