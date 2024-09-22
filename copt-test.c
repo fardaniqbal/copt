@@ -48,7 +48,7 @@ mkargv(const char *first, ...)
   size_t cnt = 0, max_cnt = 1;
   va_list ap;
 
-  if (!(arr = malloc(max_cnt * sizeof *arr)))
+  if (!(arr = (char **) malloc(max_cnt * sizeof *arr)))
     goto no_mem;
   arr[cnt++] = (char *) first;
   va_start(ap, first);
@@ -239,6 +239,7 @@ test_verify(struct testcase *tc)
   printf(": FAIL\n\n%s:%d: ", __FILE__, test_line);
   print_args(tc->argc, tc->argv, 0);
   printf("\n");
+  copt_dbg_dump();
   for (i = 0; i < tc->argc && !strcmp(tc->argv[i], tc->argv_copy[i]); i++)
     continue;
   if (i != tc->argc) {
@@ -259,7 +260,7 @@ test_run(struct testcase *tc, int reorder)
   struct copt opt;
   size_t i;
   for (i = tc->argc; i < sizeof tc->argv / sizeof *tc->argv; i++)
-    tc->argv[i] = "@@@@@@@ OUT-OF-BOUNDS @@@@@@@";
+    tc->argv[i] = (char *) "@@@@@@@ OUT-OF-BOUNDS @@@@@@@";
   memcpy(tc->argv_copy, tc->argv, sizeof tc->argv);
 
   opt = copt_init((int) tc->argc, tc->argv_copy, reorder);
@@ -631,35 +632,33 @@ run_copt_tests(int reorder)
   {
     {
 #define TEST_BEGIN(use_pre_args, use_post_args, test_args) {            \
-    static char *pre_args[][3] = {                                      \
+    static const char *pre_args[][3] = {                                \
       {0}, {"pre-foo"}, {"pre-foo", "pre-bar"}                          \
     };                                                                  \
-    static char *post_args[][3] = {                                     \
+    static const char *post_args[][3] = {                               \
       {0}, {"post-foo"}, {"post-foo", "post-bar"}                       \
     };                                                                  \
     char **test_args_ = (test_args);                                    \
     size_t i_, pre_, post_;                                             \
     for (pre_ = 0; pre_ < ((use_pre_args) ? 3 : 1); pre_++) {           \
       for (post_ = 0; post_ < ((use_post_args) ? 3 : 1); post_++) {     \
-        char **pre_args_ = pre_args[pre_];                              \
-        char **post_args_ = post_args[post_];                           \
         test_begin(&tc, NULL);                                          \
-        test_addargs(&tc, pre_args_);                                   \
+        test_addargs(&tc, (char **) pre_args[pre_]);                    \
         test_addargs(&tc, test_args_);                                  \
-        test_addargs(&tc, post_args_);                                  \
-        if (!reorder && pre_args_[0]) {                                 \
-          for (i_ = 0; pre_args_[i_]; i_++)                             \
-            expect_arg(&tc, pre_args_[i_]);                             \
+        test_addargs(&tc, (char **) post_args[post_]);                  \
+        if (!reorder && pre_args[pre_][0]) {                            \
+          for (i_ = 0; pre_args[pre_][i_]; i_++)                        \
+            expect_arg(&tc, pre_args[pre_][i_]);                        \
           for (i_ = 0; test_args_[i_]; i_++)                            \
             expect_arg(&tc, test_args_[i_]);                            \
         } else { ((void) 0)
 #define TEST_END()                                                      \
         }                                                               \
         if (reorder)                                                    \
-           for (i_ = 0; pre_args_[i_]; i_++)                            \
-             expect_arg(&tc, pre_args_[i_]);                            \
-        for (i_ = 0; post_args_[i_]; i_++)                              \
-          expect_arg(&tc, post_args_[i_]);                              \
+           for (i_ = 0; pre_args[pre_][i_]; i_++)                       \
+             expect_arg(&tc, pre_args[pre_][i_]);                       \
+        for (i_ = 0; post_args[post_][i_]; i_++)                        \
+          expect_arg(&tc, post_args[post_][i_]);                        \
         test_run(&tc, reorder);                                         \
       }                                                                 \
     }                                                                   \

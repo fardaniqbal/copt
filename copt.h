@@ -42,4 +42,6 @@ char *copt_arg(struct copt *);     /* return arg from last opt */
 int   copt_idx(struct copt *);     /* index of current arg */
 char *copt_curopt(struct copt *);  /* return most recent option */
 
+void copt_dbg_dump(void);          /* dump debug log; *not reentrant* */
+
 #endif /* COPT_H_INCLUDED_ */

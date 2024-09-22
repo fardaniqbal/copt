@@ -8,18 +8,87 @@
 #include <assert.h>
 #include <string.h>
 
-#if 1
+#if 0
+static void copt_dbg_reset(void) {}
 static void copt_dbg(const char *fmt, ...) {}
+void copt_dbg_dump(void) {}
 #else
+# include <stdarg.h>
 # include <stdio.h>
 # define copt_dbg \
-  (printf("%s:%d: %s(): ", __FILE__, __LINE__, __func__), printf)
+  (copt_dbg_marksrcpos(__FILE__, __LINE__, __func__), copt_dbg_printf)
+
+static char copt_dbg_buf[2048];
+static size_t copt_dbg_pos;
+
+static void
+copt_dbg_reset(void)
+{
+  copt_dbg_pos = 0;
+  copt_dbg_buf[0] = '\0';
+}
+
+static void
+copt_dbg_puts(const char *s)
+{
+  static const char *const truncmsg = "... <debug output truncated>";
+  size_t len = strlen(s);
+  size_t remains = sizeof copt_dbg_buf - copt_dbg_pos - 1; /* -1 for \0 */
+  size_t max_len = len < remains ? len : remains;
+  assert(copt_dbg_pos + max_len < sizeof copt_dbg_buf);
+  memcpy(copt_dbg_buf + copt_dbg_pos, s, max_len);
+  copt_dbg_pos += max_len;
+  if (len >= remains)
+    strcpy(copt_dbg_buf + sizeof copt_dbg_buf - strlen(truncmsg) - 1,
+           truncmsg);
+  assert(copt_dbg_pos < sizeof copt_dbg_buf);
+  copt_dbg_buf[copt_dbg_pos] = '\0';
+}
+
+# ifdef __GNUC__
+__extension__ __attribute__((format(printf, 1, 2)))
+# endif
+static void
+copt_dbg_printf(const char *fmt, ...)
+{
+  char buf[1024];
+  va_list ap;
+  va_start(ap, fmt);
+  vsnprintf(buf, sizeof buf, fmt, ap);
+  va_end(ap);
+  copt_dbg_puts(buf);
+}
+
+static void
+copt_dbg_marksrcpos(const char *file, int line, const char *func)
+{
+  char buf[32];
+  snprintf(buf, sizeof buf, "%d", line);
+  copt_dbg_puts(file);
+  copt_dbg_puts(":");
+  copt_dbg_puts(buf);
+  copt_dbg_puts(": ");
+  copt_dbg_puts(func);
+  copt_dbg_puts("(): ");
+}
+
+void
+copt_dbg_dump(void)
+{
+  char *end = (char *) memchr(copt_dbg_buf, '\0', sizeof copt_dbg_buf);
+  if (!end)
+    copt_dbg_buf[sizeof copt_dbg_buf - 1] = '\0';
+  printf("%s%s", copt_dbg_buf, copt_dbg_buf[0] == '\0' ? "" :
+         copt_dbg_buf[strlen(copt_dbg_buf) - 1] == '\n' ? "" : "\n");
+  copt_dbg_reset();
+}
 #endif
 
 struct copt
 copt_init(int argc, char **argv, int reorder)
 {
   struct copt opt;
+  copt_dbg_reset();
   opt.curopt = NULL;
   opt.argc = argc;
   opt.argv = argv;
