@@ -8,12 +8,14 @@
 #include <assert.h>
 #include <string.h>
 
-#if 0
+/* - debug logging ----------------------------------------------------- */
+
+#if 0 /* make this #if 0 to enable debug logging, #if 1 to disable */
 static void copt_dbg_reset(void) {}
 static void copt_dbg(const char *fmt, ...) { (void) fmt; }
 static void copt_dbg_args(struct copt *opt) { (void) opt; }
 void copt_dbg_dump(void) {}
-#else
+#else /* debug logging */
 # include <stdarg.h>
 # include <stdio.h>
 # ifdef __GNUC__
@@ -29,17 +31,13 @@ void copt_dbg_dump(void) {}
 static char copt_dbg_buf[8192];
 static size_t copt_dbg_pos;
 
-static void
-copt_dbg_reset(void)
-{
-  copt_dbg_pos = 0;
-  copt_dbg_buf[0] = '\0';
-}
+static void copt_dbg_reset(void) { copt_dbg_pos = copt_dbg_buf[0] = 0; }
 
+/* Append string to log buffer.  Will be displayed by copt_dbg_dump(). */
 static void
 copt_dbg_puts(const char *s)
 {
-  static const char *const truncmsg = "... <debug output truncated>";
+  static const char *const trunc = "... <debug output truncated>";
   size_t len = strlen(s);
   size_t remains = sizeof copt_dbg_buf - copt_dbg_pos - 1; /* -1 for \0 */
   size_t max_len = len < remains ? len : remains;
@@ -47,8 +45,7 @@ copt_dbg_puts(const char *s)
   memcpy(copt_dbg_buf + copt_dbg_pos, s, max_len);
   copt_dbg_pos += max_len;
   if (len >= remains)
-    strcpy(copt_dbg_buf + sizeof copt_dbg_buf - strlen(truncmsg) - 1,
-           truncmsg);
+    strcpy(copt_dbg_buf + sizeof copt_dbg_buf - strlen(trunc) - 1, trunc);
   assert(copt_dbg_pos < sizeof copt_dbg_buf);
   copt_dbg_buf[copt_dbg_pos] = '\0';
 }
@@ -99,8 +96,14 @@ copt_dbg_args_(struct copt *opt)
     copt_dbg_puts("'"), copt_dbg_puts(opt->argv[i]), copt_dbg_puts("' ");
   copt_dbg_puts("\n");
 }
-#endif
+#endif /* end debug logging */
 
+/* - copt implementation ----------------------------------------------- */
+
+/* Return a copt context initialized to parse ARGC items from argument list
+   ARGV.  If REORDER is true, ARGV may be reordered to allow mixing options
+   with non-option args.  If REORDER is false, option parsing will stop at
+   the first non-option arg in ARGV. */
 struct copt
 copt_init(int argc, char **argv, int reorder)
 {
@@ -160,6 +163,9 @@ copt_reorder_opt(struct copt *opt)
   copt_dbg("set new argidx=%d\n", opt->argidx);
 }
 
+/* Advance to next option.  Return false while options remain in the arg
+   array passed to copt_init().  Return true after all options have been
+   consumed. */
 int
 copt_done(struct copt *opt)
 {
@@ -214,15 +220,20 @@ copt_done(struct copt *opt)
   return 0;
 }
 
+/* After copt_done() indicates more options remain, call this function to
+   act on the next option.  Return true if next option matches OPTSPEC.
+   OPTSPEC gives the list of options to check against as a "|"-delimited
+   string.  (e.g. OPTSPEC="F|f|foo" returns true when next option is "-F",
+   "-f", or "--foo", accounting for grouped short options. */
 int
-copt_opt(struct copt *opt, const char *option)
+copt_opt(struct copt *opt, const char *optspec)
 {
   const char *start, *end;
   char *arg = opt->argv[opt->idx];
   size_t arglen;
   assert((arg && arg[0] == '-' && arg[1] != '\0') || !!!"not option");
-  copt_dbg("entering (needle=%s, idx=%d, subidx=%d, argidx=%d)\n",
-           option, opt->idx, opt->subidx, opt->argidx);
+  copt_dbg("entering (optspec=%s, idx=%d, subidx=%d, argidx=%d)\n",
+           optspec, opt->idx, opt->subidx, opt->argidx);
 
   if (opt->subidx > 0) /* in (possibly grouped) short option */
     arg += opt->subidx, arglen = 1; 
@@ -230,16 +241,19 @@ copt_opt(struct copt *opt, const char *option)
     arg += 2, arglen = strlen(arg);
   if ((end = strchr(arg, '=')) != NULL) /* --opt=ARG form */
     arglen = arglen < (size_t) (end-arg) ? arglen : end-arg;
-  for (start = option; *start != '\0'; start = end + (*end != '\0')) {
+  for (start = optspec; *start != '\0'; start = end + (*end != '\0')) {
     end = strchr(start, '|');
     end = end ? end : start + strlen(start);
     if ((size_t) (end-start) == arglen && !memcmp(arg, start, arglen))
       return copt_dbg("found matching opt '%s'\n", arg), 1;
   }
-  copt_dbg("no match in '%s'\n", option);
+  copt_dbg("no match in '%s'\n", optspec);
   return 0;
 }
 
+/* After copt_opt() indicates you found an option, call this function if
+   your option expects an argument.  Returns the arg given to the option
+   matched by the last call to copt_opt(), or NULL if no arg exists. */
 char *
 copt_arg(struct copt *opt)
 {
@@ -247,8 +261,6 @@ copt_arg(struct copt *opt)
   int argidx = opt->argidx;
   char ch, *eq;
   opt->subidx = opt->argidx = 0;
-  copt_dbg("entering (idx=%d, subidx=%d, argidx old=%d, cur=%d)\n",
-           opt->idx, opt->subidx, argidx, opt->subidx);
 
   if (subidx > 0) {        /* in (possibly grouped) short option */
     if ((ch = opt->argv[opt->idx][subidx+1]) != '\0')
@@ -267,5 +279,16 @@ copt_arg(struct copt *opt)
   return opt->argv[opt->idx];
 }
 
+/* After copt_done() indicates you've consumed all options, this function
+   returns index of first non-option argument in the argv array with which
+   the given copt was initialized.  In idiomatic usage, you'd call this
+   after your copt_done() loop terminates to get non-option args. */
 int copt_idx(struct copt *opt) { return opt->idx; }
+
+/* Return the option found by most recent call to copt_done().  To meet
+   copt's goal of zero heap allocation, the returned string is valid _only_
+   until the next call on the given copt object, and _only_ while the given
+   copt is in scope.  Make a copy if you need it longer.  Intended use is
+   to show an error message when encountering unknown options, for which
+   idiomatic usage typically doesn't require making a copy. */
 char *copt_curopt(struct copt *opt) { return opt->curopt; }
