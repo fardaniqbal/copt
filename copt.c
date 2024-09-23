@@ -16,10 +16,15 @@ void copt_dbg_dump(void) {}
 #else
 # include <stdarg.h>
 # include <stdio.h>
+# ifdef __GNUC__
+#   define coptfunc __extension__ __func__
+# else
+#   define coptfunc __func__
+# endif
 # define copt_dbg \
-  (copt_dbg_marksrcpos(__FILE__, __LINE__, __func__), copt_dbg_printf)
+  (copt_dbg_marksrcpos(__FILE__, __LINE__, coptfunc), copt_dbg_printf)
 # define copt_dbg_args \
-  (copt_dbg_marksrcpos(__FILE__, __LINE__, __func__), copt_dbg_args_)
+  (copt_dbg_marksrcpos(__FILE__, __LINE__, coptfunc), copt_dbg_args_)
 
 static char copt_dbg_buf[8192];
 static size_t copt_dbg_pos;
@@ -224,7 +229,7 @@ copt_opt(struct copt *opt, const char *option)
   for (start = option; *start != '\0'; start = end + (*end != '\0')) {
     end = strchr(start, '|');
     end = end ? end : start + strlen(start);
-    if (end-start == arglen && !memcmp(arg, start, arglen))
+    if ((size_t) (end-start) == arglen && !memcmp(arg, start, arglen))
       return copt_dbg("found matching opt '%s'\n", arg), 1;
   }
   copt_dbg("no match in '%s'\n", option);
