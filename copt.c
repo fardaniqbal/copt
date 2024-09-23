@@ -141,7 +141,7 @@ static void
 copt_reorder_opt(struct copt *opt)
 {
   int i = opt->idx;
-  copt_dbg("entering reorder (previous argidx=%d)...\n", opt->argidx);
+  copt_dbg("entering reorder (argidx cur=%d, new=0)...\n", opt->argidx);
   opt->argidx = 0;
   for (; i < opt->argc && strcmp(opt->argv[i], "--"); i++)
     if (opt->argv[i][0] == '-' && opt->argv[i][1] != '\0')
@@ -151,10 +151,13 @@ copt_reorder_opt(struct copt *opt)
     return;
   }
   copt_rotate_right(opt->argv + opt->idx, i - opt->idx);
-  copt_dbg("rotated args from %d to %d:\n", opt->idx, i);
+  copt_dbg("rotated args from %d to %d:\n", opt->idx, i-1);
   copt_dbg_args(opt);
   if (i >= opt->argc || opt->argv[i][0] != '-' || opt->argv[i][1] == '\0')
-    copt_dbg("setting new argidx=%d\n", i), opt->argidx = i;
+    opt->argidx = i;
+  else
+    opt->argidx = opt->argc;
+  copt_dbg("set new argidx=%d\n", opt->argidx);
 }
 
 int
@@ -163,7 +166,8 @@ copt_done(struct copt *opt)
   int i = opt->idx;
   opt->curopt = NULL;
   copt_dbg("\n");
-  copt_dbg("*** entering (idx=%d, subidx=%d)\n", opt->idx, opt->subidx);
+  copt_dbg("*** entering (idx=%d, subidx=%d, argidx=%d)\n",
+           opt->idx, opt->subidx, opt->argidx);
   if (opt->idx >= opt->argc)
     return 1;
   if (opt->subidx > 0) {  /* in the middle of grouped short options */
@@ -243,8 +247,8 @@ copt_arg(struct copt *opt)
   int argidx = opt->argidx;
   char ch, *eq;
   opt->subidx = opt->argidx = 0;
-  copt_dbg("entering (idx=%d, subidx=%d, argidx=%d)\n",
-           opt->idx, opt->subidx, opt->argidx);
+  copt_dbg("entering (idx=%d, subidx=%d, argidx old=%d, cur=%d)\n",
+           opt->idx, opt->subidx, argidx, opt->subidx);
 
   if (subidx > 0) {        /* in (possibly grouped) short option */
     if ((ch = opt->argv[opt->idx][subidx+1]) != '\0')
