@@ -9,7 +9,7 @@ bin_suffix := $(and $(filter msys% mingw% cygwin% win%,$(target_os)),.exe)
 
 all: copt-test$(bin_suffix) copt-test-cpp$(bin_suffix)
 check: copt-test$(bin_suffix) copt-test-cpp$(bin_suffix)
-	for i in $^; do ./$$i || exit 1; done
+	@for i in $^; do echo ./$$i; ./$$i || exit 1; done
 copt-test$(bin_suffix): copt.o copt-test.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 copt-test-cpp$(bin_suffix): copt-cpp.o copt-test-cpp.o
