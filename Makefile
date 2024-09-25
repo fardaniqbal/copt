@@ -4,7 +4,7 @@ CFLAGS += -Wall -pedantic-errors -Os -g3
 CXXFLAGS += -std=c++98
 
 # Add .exe to binary filenames if targeting Windows.
-target_os ?= $(shell uname -o | tr [:upper:] [:lower:])
+target_os ?= $(shell uname -s | tr [:upper:] [:lower:])
 bin_suffix := $(and $(filter msys% mingw% cygwin% win%,$(target_os)),.exe)
 
 all: copt-test$(bin_suffix) copt-test-cpp$(bin_suffix)
