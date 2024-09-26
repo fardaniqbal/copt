@@ -143,16 +143,18 @@ copt_rotate_right(char **argv, size_t argc)
 static void
 copt_reorder_opt(struct copt *opt)
 {
-  int i = opt->idx;
+  char **argv = opt->argv;
+  int i;
   copt_dbg("entering reorder (argidx cur=%d, new=0)...\n", opt->argidx);
   opt->argidx = 0;
-  for (; i < opt->argc && strcmp(opt->argv[i], "--"); i++)
-    if (opt->argv[i][0] == '-' && opt->argv[i][1] != '\0')
+  for (i = opt->idx; i < opt->argc; i++)
+    if (argv[i][0] == '-' && argv[i][1] != '\0')
       break;
-  if (i >= opt->argc || !strcmp(opt->argv[i++], "--")) {
+  if (i >= opt->argc || argv[i][0] != '-' || argv[i][1] == '\0') {
     copt_dbg("skipping reorder\n");
     return;
   }
+  i++;
   copt_rotate_right(opt->argv + opt->idx, i - opt->idx);
   copt_dbg("rotated args from %d to %d:\n", opt->idx, i-1);
   copt_dbg_args(opt);
@@ -195,11 +197,11 @@ copt_done(struct copt *opt)
   assert(i <= opt->argc);
   if (i >= opt->argc)
     return copt_dbg("i >= argc, done\n"), 1;
-  if (!strcmp(opt->argv[i], "--")) /* just "--" means done */
-    return copt_dbg("found '--', done\n"), opt->idx++, 1;
   copt_dbg("reorder? %d\n", opt->reorder);
   if (opt->reorder)
     copt_reorder_opt(opt);
+  if (!strcmp(opt->argv[i], "--")) /* just "--" means done */
+    return copt_dbg("found '--', done\n"), opt->idx++, 1;
   copt_dbg("checking for non-option\n");
   if (opt->argv[i][0] != '-') /* found non-option */
     return 1;
