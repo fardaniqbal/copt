@@ -68,6 +68,7 @@ no_mem:
 }
 
 enum argtype {
+  ARGTYPE_NULL   = 0,
   ARGTYPE_OPT    = 1,
   ARGTYPE_OPTARG = 2,
   ARGTYPE_ARG    = 3,
@@ -78,6 +79,7 @@ static const char *
 argtype_str(enum argtype type)
 {
   switch (type) {
+    case ARGTYPE_NULL:    return "(null)";
     case ARGTYPE_OPT:     return "OPT";
     case ARGTYPE_OPTARG:  return "OPTARG";
     case ARGTYPE_ARG:     return "ARG";
@@ -88,7 +90,7 @@ argtype_str(enum argtype type)
 
 struct arg {
   enum argtype type;
-  char *val;
+  const char *val;
 };
 
 /* Return true if two args are the same, including NULL values. */
@@ -236,7 +238,9 @@ test_verify(struct testcase *tc)
     }
   }
   /* Test failed.  Print formatted table of expected vs actual args. */
-  printf(": FAIL\n\n%s:%d: ", __FILE__, test_line);
+  printf(": FAIL\n\n");
+  copt_dbg_dump();
+  printf("%s:%d: ", __FILE__, test_line);
   print_args(tc->argc, tc->argv, 0);
   printf("\n");
   for (i = 0; i < tc->argc && !strcmp(tc->argv[i], tc->argv_copy[i]); i++)
@@ -246,7 +250,6 @@ test_verify(struct testcase *tc)
     print_args(tc->argc, tc->argv_copy, 0);
     printf(")\n");
   }
-  copt_dbg_dump();
   if (tc->expect_cnt != tc->actual_cnt)
     printf("  expected %lu args, found %lu\n",
            (long) tc->expect_cnt, (long) tc->actual_cnt);
@@ -295,19 +298,19 @@ test_run(struct testcase *tc, int reorder)
   for (i = 0; i < tc->argc; i++)
     free(tc->argv[i]);
   for (i = 0; i < tc->expect_cnt; i++)
-    free(tc->expect[i].val);
+    free((void *) tc->expect[i].val); /* discard const */
   for (i = 0; i < tc->actual_cnt; i++)
-    free(tc->actual[i].val);
+    free((void *) tc->actual[i].val); /* discard const */
 }
 
 #define TEST_BEGIN(use_pre_args, use_post_args, test_args) {            \
     static const char *pre_args[][3] = {                                \
-      {0}, {"pre-foo"}, {"pre-foo", "pre-bar"}, {"-"}, {"asdf", "-"},   \
-      {"-", "fdsa"}                                                     \
+      {0}, {"pre-foo"}, {"pre-foo", "pre-bar"}, {"-"},                  \
+      {"pre-asdf", "-"},  {"-", "pre-fdsa"}                             \
     };                                                                  \
     static const char *post_args[][3] = {                               \
-      {0}, {"post-foo"}, {"post-foo", "post-bar"}, {"-"}, {"asdf", "-"},\
-      {"-", "fdsa"}                                                     \
+      {0}, {"post-foo"}, {"post-foo", "post-bar"}, {"-"},               \
+      {"post-asdf", "-"}, {"-", "post-fdsa"}                            \
     };                                                                  \
     char **main_args_[32];   /* test-specific options and args */       \
     size_t main_arg_cnt_ = 0; /* number of test-specifc arg arrays */   \
@@ -326,21 +329,26 @@ test_run(struct testcase *tc, int reorder)
         static const char *opts_[][3] = {                               \
           {0}, {"-x"}, {"-x","-y"}, {"-xy"}, {"-xyzzy"}                 \
         };                                                              \
+        static const struct arg exp_[][6] = {                           \
+          {{ARGTYPE_NULL}}, {{ARGTYPE_OPT,"x"}},                        \
+          {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"y"}},                       \
+          {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"y"}},                       \
+          {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"y"}, {ARGTYPE_OPT,"z"},     \
+           {ARGTYPE_OPT,"z"}, {ARGTYPE_OPT,"y"}}                        \
+        };                                                              \
+        assert(sizeof opts_/sizeof *opts_ == sizeof exp_/sizeof *exp_); \
         for (j_ = 0; j_ < sizeof opts_ / sizeof *opts_; j_++) {         \
           for (k_ = 0; k_ < 1 /*sizeof opts_ / sizeof *opts_*/; k_++) { \
-            size_t opt_i_, sub_i_;                                      \
+            int argbrk_done_ = 0;                                       \
+            size_t exp_i_;                                              \
             test_begin(&tc, NULL);                                      \
             test_addargs(&tc, (char **) opts_[j_]);                     \
             test_addargs(&tc, (char **) pre_args[pre_]);                \
             test_addargs(&tc, (char **) opts_[k_]);                     \
             test_addargs(&tc, test_args_);                              \
             test_addargs(&tc, (char **) post_args[post_]);              \
-            for (opt_i_ = 0; opts_[j_][opt_i_]; opt_i_++)               \
-              for (sub_i_ = 1; opts_[j_][opt_i_][sub_i_]; sub_i_++) {   \
-                char exp_[2] = {'\0', '\0'};                            \
-                exp_[0] = opts_[j_][opt_i_][sub_i_];                    \
-                expect_opt(&tc, exp_);                                  \
-              }                                                         \
+            for (exp_i_ = 0; exp_[j_][exp_i_].type; exp_i_++)           \
+              expect(&tc, exp_[j_][exp_i_].type, exp_[j_][exp_i_].val); \
             if (!reorder && pre_args[pre_][0]) {                        \
               for (i_ = 0; pre_args[pre_][i_]; i_++)                    \
                 expect_arg(&tc, pre_args[pre_][i_]);                    \
@@ -348,9 +356,16 @@ test_run(struct testcase *tc, int reorder)
                 expect_arg(&tc, test_args_[i_]);                        \
             } else { ((void) 0)
 
+#define TEST_ARGBRK() \
+            } \
+            if (reorder) {                                              \
+              for (i_ = 0; pre_args[pre_][i_]; i_++)                    \
+                expect_arg(&tc, pre_args[pre_][i_]);                    \
+              argbrk_done_ = 1;                                         \
+
 #define TEST_END()                                                      \
             }                                                           \
-            if (reorder)                                                \
+            if (reorder && !argbrk_done_)                               \
                for (i_ = 0; pre_args[pre_][i_]; i_++)                   \
                  expect_arg(&tc, pre_args[pre_][i_]);                   \
             for (i_ = 0; post_args[post_][i_]; i_++)                    \
@@ -528,142 +543,88 @@ run_copt_tests(int reorder)
     expect_badopt(&tc, unknown[i]);
     test_run(&tc, reorder);
 
-    test_begin(&tc, unknown[i], "nonopt", NULL);
+    TEST_BEGIN(1, 1, mkargv(unknown[i], NULL));
     expect_badopt(&tc, unknown[i]);
-    expect_arg(&tc, "nonopt");
-    test_run(&tc, reorder);
+    TEST_END();
 
-    test_begin(&tc, unknown[i], "nonopt1", "nonopt2", NULL);
-    expect_badopt(&tc, unknown[i]);
-    expect_arg(&tc, "nonopt1");
-    expect_arg(&tc, "nonopt2");
-    test_run(&tc, reorder);
-
-    test_begin(&tc, "nonopt", unknown[i], NULL);
-    if (reorder) expect_badopt(&tc, unknown[i]);
-    expect_arg(&tc, "nonopt");
-    if (!reorder) expect_arg(&tc, unknown[i]);
-    test_run(&tc, reorder);
-
-    test_begin(&tc, "nonopt1", "nonopt2", unknown[i], NULL);
-    if (reorder) expect_badopt(&tc, unknown[i]);
-    expect_arg(&tc, "nonopt1");
-    expect_arg(&tc, "nonopt2");
-    if (!reorder) expect_arg(&tc, unknown[i]);
-    test_run(&tc, reorder);
-
-    test_begin(&tc, "-x", unknown[i], NULL);
+    TEST_BEGIN(1, 1, mkargv("-x", unknown[i], NULL));
     expect_opt(&tc, "x");
     expect_badopt(&tc, unknown[i]);
-    test_run(&tc, reorder);
+    TEST_END();
 
-    test_begin(&tc, unknown[i], "-x", NULL);
-    expect_badopt(&tc, unknown[i]);
-    expect_opt(&tc, "x");
-    test_run(&tc, reorder);
-
-    test_begin(&tc, "-x", unknown[i], "-y", NULL);
+    TEST_BEGIN(1, 1, mkargv("-x", unknown[i], "-y", NULL));
     expect_opt(&tc, "x");
     expect_badopt(&tc, unknown[i]);
     expect_opt(&tc, "y");
-    test_run(&tc, reorder);
-
-    test_begin(&tc, "-x", unknown[i], "nonopt", NULL);
-    expect_opt(&tc, "x");
-    expect_badopt(&tc, unknown[i]);
-    expect_arg(&tc, "nonopt");
-    test_run(&tc, reorder);
-
-    test_begin(&tc, unknown[i], "-x", "nonopt", NULL);
-    expect_badopt(&tc, unknown[i]);
-    expect_opt(&tc, "x");
-    expect_arg(&tc, "nonopt");
-    test_run(&tc, reorder);
-
-    test_begin(&tc, "-x", unknown[i], "-y", "nonopt", NULL);
-    expect_opt(&tc, "x");
-    expect_badopt(&tc, unknown[i]);
-    expect_opt(&tc, "y");
-    expect_arg(&tc, "nonopt");
-    test_run(&tc, reorder);
-
-    test_begin(&tc, "-x", unknown[i], "nonopt1", "nonopt2", NULL);
-    expect_opt(&tc, "x");
-    expect_badopt(&tc, unknown[i]);
-    expect_arg(&tc, "nonopt1");
-    expect_arg(&tc, "nonopt2");
-    test_run(&tc, reorder);
-
-    test_begin(&tc, unknown[i], "-x", "nonopt1", "nonopt2", NULL);
-    expect_badopt(&tc, unknown[i]);
-    expect_opt(&tc, "x");
-    expect_arg(&tc, "nonopt1");
-    expect_arg(&tc, "nonopt2");
-    test_run(&tc, reorder);
-
-    test_begin(&tc, "-y", unknown[i], "-x", "nonopt1", "nonopt2", NULL);
-    expect_opt(&tc, "y");
-    expect_badopt(&tc, unknown[i]);
-    expect_opt(&tc, "x");
-    expect_arg(&tc, "nonopt1");
-    expect_arg(&tc, "nonopt2");
-    test_run(&tc, reorder);
+    TEST_END();
   }
 
   /* unknown options grouped with known options */
-  test_begin(&tc, "-qx", NULL);
+  TEST_BEGIN(1, 1, mkargv("-qx", NULL));
   expect_badopt(&tc, "-q");
   expect_opt(&tc, "x");
-  test_run(&tc, reorder);
+  TEST_END();
 
-  test_begin(&tc, "-qs", "sarg", NULL);
+  TEST_BEGIN(1, 1, mkargv("-qs", "sarg", NULL));
   expect_badopt(&tc, "-q");
   expect_opt(&tc, "s");
   expect_optarg(&tc, "sarg");
-  test_run(&tc, reorder);
+  TEST_END();
 
-  test_begin(&tc, "-qs", NULL);
+  TEST_BEGIN(1, 0, mkargv("-qs", NULL));
   expect_badopt(&tc, "-q");
   expect_opt(&tc, "s");
   expect_optarg(&tc, NULL);
-  test_run(&tc, reorder);
+  TEST_END();
 
-  test_begin(&tc, "-yqx", NULL);
+  TEST_BEGIN(1, 1, mkargv("-yqx", NULL));
   expect_opt(&tc, "y");
   expect_badopt(&tc, "-q");
   expect_opt(&tc, "x");
-  test_run(&tc, reorder);
+  TEST_END();
 
-  test_begin(&tc, "-zqs", "sarg", NULL);
+  TEST_BEGIN(1, 1, mkargv("-zqs", "sarg", NULL));
   expect_opt(&tc, "z");
   expect_badopt(&tc, "-q");
   expect_opt(&tc, "s");
   expect_optarg(&tc, "sarg");
-  test_run(&tc, reorder);
+  TEST_END();
 
-  test_begin(&tc, "-xqs", NULL);
+  TEST_BEGIN(1, 0, mkargv("-xqs", NULL));
   expect_opt(&tc, "x");
   expect_badopt(&tc, "-q");
   expect_opt(&tc, "s");
   expect_optarg(&tc, NULL);
-  test_run(&tc, reorder);
+  TEST_END();
 
-  test_begin(&tc, "-zxyqx", NULL);
+  TEST_BEGIN(1, 1, mkargv("-zxyqx", NULL));
   expect_opt(&tc, "z");
   expect_opt(&tc, "x");
   expect_opt(&tc, "y");
   expect_badopt(&tc, "-q");
   expect_opt(&tc, "x");
-  test_run(&tc, reorder);
+  TEST_END();
 
-  test_begin(&tc, "-xy", "-zqs", "sarg", NULL);
+  TEST_BEGIN(1, 1, mkargv("-xy", "-zqs", "sarg", NULL));
   expect_opt(&tc, "x");
   expect_opt(&tc, "y");
   expect_opt(&tc, "z");
   expect_badopt(&tc, "-q");
   expect_opt(&tc, "s");
   expect_optarg(&tc, "sarg");
-  test_run(&tc, reorder);
+  TEST_END();
+
+  TEST_BEGIN(1, 1, mkargv("-xy", "-zqs", "sarg", "arg1", "arg2", NULL));
+  expect_opt(&tc, "x");
+  expect_opt(&tc, "y");
+  expect_opt(&tc, "z");
+  expect_badopt(&tc, "-q");
+  expect_opt(&tc, "s");
+  expect_optarg(&tc, "sarg");
+  TEST_ARGBRK();
+  expect_arg(&tc, "arg1");
+  expect_arg(&tc, "arg2");
+  TEST_END();
 
   test_begin(&tc, "-xy", "-zqs", "sarg", "arg1", "arg2", NULL);
   expect_opt(&tc, "x");
