@@ -14,10 +14,11 @@
 static void copt_dbg_reset(void) {}
 static void copt_dbg(const char *fmt, ...) { (void) fmt; }
 static void copt_dbg_args(struct copt *opt) { (void) opt; }
-void copt_dbg_dump(void) {}
+char *copt_dbg_dump(void) { return NULL; }
 #else /* debug logging */
 # include <stdarg.h>
 # include <stdio.h>
+# include <stdlib.h>
 # ifdef __GNUC__
 #   define coptfunc __extension__ __func__
 # else
@@ -33,7 +34,7 @@ static size_t copt_dbg_pos;
 
 static void copt_dbg_reset(void) { copt_dbg_pos = copt_dbg_buf[0] = 0; }
 
-/* Append string to log buffer.  Will be displayed by copt_dbg_dump(). */
+/* Append string to log buffer, which is returned by copt_dbg_dump(). */
 static void
 copt_dbg_puts(const char *s)
 {
@@ -77,15 +78,25 @@ copt_dbg_marksrcpos(const char *file, int line, const char *func)
   copt_dbg_puts("(): ");
 }
 
-void
+/* Retruned buffer is malloc()-d; caller must free() it. */
+char *
 copt_dbg_dump(void)
 {
+  char *rv;
   char *end = (char *) memchr(copt_dbg_buf, '\0', sizeof copt_dbg_buf);
   if (!end)
     copt_dbg_buf[sizeof copt_dbg_buf - 1] = '\0';
-  printf("%s%s", copt_dbg_buf, copt_dbg_buf[0] == '\0' ? "" :
-         copt_dbg_buf[strlen(copt_dbg_buf) - 1] == '\n' ? "" : "\n");
+  if (copt_dbg_pos > 0 && copt_dbg_buf[copt_dbg_pos-1] != '\n')
+    copt_dbg_puts("\n");
+  if ((rv = (char *) malloc(copt_dbg_pos+1)) == NULL) {
+    fputs(copt_dbg_buf, stdout);
+    puts("copt_dbg_dump(): not enough memory to alloc return buffer");
+    exit(1);
+  }
+  assert(copt_dbg_pos < sizeof copt_dbg_buf);
+  memcpy(rv, copt_dbg_buf, copt_dbg_pos+1);
   copt_dbg_reset();
+  return rv;
 }
 
 static void

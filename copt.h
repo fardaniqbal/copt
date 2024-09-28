@@ -42,6 +42,6 @@ int   copt_opt(struct copt *, const char *); /* true if given opt found */
 char *copt_arg(struct copt *);     /* return arg from last opt */
 int   copt_idx(struct copt *);     /* index of current arg */
 char *copt_curopt(struct copt *);  /* return most recent option */
-void  copt_dbg_dump(void); /* INTERNAL DEBUG USE ONLY; NOT REENTRANT */
+char *copt_dbg_dump(void); /* NOT REENTRANT; INTERNAL DEBUG USE ONLY */
 
 #endif /* COPT_H_INCLUDED_ */

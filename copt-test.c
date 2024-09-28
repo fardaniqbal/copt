@@ -21,8 +21,56 @@ static void test_dbg(const char *fmt, ...) {}
 #endif
 
 static size_t total_test_cnt;
-static size_t passed_test_cnt;
+static size_t failed_test_cnt;
 static int test_line;
+static char **fail_info; /* array of failed_test_cnt strings */
+
+/* Create a new fail_info entry and return a pointer to it. */
+static char *
+new_failed_test(void)
+{
+  const size_t infosz = 2;
+  char *strbuf, **info = fail_info;
+  failed_test_cnt++;
+  if (info)
+    info = (char **) realloc(info, failed_test_cnt * sizeof *fail_info);
+  else
+    info = (char **) malloc(failed_test_cnt * sizeof *fail_info);
+  if (!info || !(strbuf = (char *) malloc(infosz)))
+    printf("%s:%d: out of memory\n", __FILE__, test_line), exit(1);
+  fail_info = info;
+  strbuf[0] = '\0';
+  return fail_info[failed_test_cnt-1] = strbuf;
+}
+
+/* Print message to current fail_info string, reallocating if necessary. */
+# ifdef __GNUC__
+__extension__ __attribute__((format(printf, 1, 2)))
+# endif
+static void
+logf(const char *fmt, ...)
+{
+  char *buf, *cp;
+  int rc, basecap, cap = 1;
+  va_list ap;
+  assert(failed_test_cnt || !!!"forgot to call new_failed_test()");
+  buf = fail_info[failed_test_cnt-1];
+  basecap = strlen(buf);
+  cp = buf + basecap;
+
+  /* Do this in a loop because MSVC's vsnprintf returns < 0 on trunc. */
+  va_start(ap, fmt);
+  while ((rc = vsnprintf(cp, cap, fmt, ap)) >= cap || rc < 0) {
+    va_end(ap);
+    cap = rc >= 0 ? rc+1 : cap*2; /* just ignore int overflow */
+    if ((buf = (char *) realloc(buf, basecap + cap)) == NULL)
+      printf("not enough memory for failure log\n"), exit(1);
+    cp = buf + basecap;
+    va_start(ap, fmt);
+  }
+  va_end(ap);
+  fail_info[failed_test_cnt-1] = buf;
+}
 
 /* Quote STR in static circular buffer and return pointer to it. */
 static const char *
@@ -116,17 +164,17 @@ struct testcase {
   char *argv_copy[64]; /* because argv might get reordered */
 };
 
-/* Print formatted table of expected vs actual args. */
+/* Print formatted table of expected vs actual args to failure log. */
 static void
 testcase_dump(const struct testcase *tc)
 {
-  const int val_width = 27, type_width = 7;
+  const int val_w = 27, type_w = 7;
   size_t i;
-  printf("%-*s | %s\n", val_width+type_width+1, "EXPECTED", "ACTUAL");
-  for (i = 0; i < (size_t) (val_width+type_width+1); i++) printf("-");
-  printf(" | ");
-  for (i = 0; i < (size_t) (val_width+type_width+1); i++) printf("-");
-  printf("\n");
+  logf("%-*s | %s\n", val_w+type_w+1, "EXPECTED", "ACTUAL");
+  for (i = 0; i < (size_t) (val_w+type_w+1); i++) logf("-");
+  logf(" | ");
+  for (i = 0; i < (size_t) (val_w+type_w+1); i++) logf("-");
+  logf("\n");
 
   for (i = 0; i < tc->expect_cnt || i < tc->actual_cnt; i++) {
     const char *ev = NULL, *et = "";
@@ -135,8 +183,8 @@ testcase_dump(const struct testcase *tc)
       ev = tc->expect[i].val, et = argtype_str(tc->expect[i].type);
     if (i < tc->actual_cnt)
       av = tc->actual[i].val, at = argtype_str(tc->actual[i].type);
-    printf("%-*s %-*s | ", val_width, quotestr(ev), type_width, et);
-    printf("%-*s %-*s\n",  val_width, quotestr(av), type_width, at);
+    logf("%-*s %-*s | ", val_w, quotestr(ev), type_w, et);
+    logf("%-*s %-*s\n",  val_w, quotestr(av), type_w, at);
   }
 }
 
@@ -206,25 +254,45 @@ test_addargs(struct testcase *tc, char **argv)
   }
 }
 
-static void
-print_args(size_t argc, char **argv, size_t max_width)
+/* Print quoted args into NBYTE-size buffer DST, truncating if longer than
+   MAX_WIDTH chars.  Return actual required size of DST, including \0. */
+static size_t
+sprint_args(char *dst, size_t nbyte,
+            size_t argc, char **argv, size_t max_width)
 {
-  static char buf[1024];
-  size_t i;
-  buf[0] = '\0';
-  for (i = 0; i < argc; i++)
-    strcat(strcat(strcat(buf, "'"), argv[i]), "' ");
-  if (max_width > 0 && strlen(buf) >= max_width)
-    strcpy(buf + max_width - 4, "... ");
-  printf("%-*s", max_width > 0 ? (int) max_width : 0, buf);
+  size_t i, cp;
+  assert(dst != NULL || nbyte == 0);
+  for (i = cp = 0; i < argc; cp += strlen(argv[i])+3, i++)
+    if (cp + strlen(argv[i]) + 3 < nbyte)
+      strcat(strcat(strcpy(dst+cp, "'"), argv[i]), "' ");
+    else if (cp < nbyte)
+      memcpy(dst+cp, quotestr(argv[i]), nbyte-1-cp);
+  if (4 <= max_width && max_width < cp && max_width < nbyte)
+    strcpy(dst+max_width-4, "... ");
+  if (max_width > 0)
+    for (; cp < max_width && cp < nbyte-1; cp++)
+      dst[cp] = ' ';
+  if (nbyte)
+    dst[nbyte-1 < cp ? nbyte-1 : cp] = '\0';
+  return max_width+1 < cp ? max_width+1 : cp;
+}
+
+static void
+logf_args(size_t argc, char **argv, size_t max_width)
+{
+  char buf[1024];
+  sprint_args(buf, sizeof buf, argc, argv, max_width);
+  logf("%s", buf);
 }
 
 static void
 test_verify(struct testcase *tc)
 {
+  char buf[71], *tmp;
   size_t i;
   total_test_cnt++;
-  print_args(tc->argc, tc->argv, 70);
+  sprint_args(buf, sizeof buf, tc->argc, tc->argv, sizeof buf-1);
+  fputs(buf, stdout);
 
   if (tc->expect_cnt == tc->actual_cnt) {
     /* Check if actual args differ from expected args. */
@@ -233,28 +301,29 @@ test_verify(struct testcase *tc)
         break;
     if (i == tc->expect_cnt) {
       printf(": OK\n");
-      passed_test_cnt++;
       return;
     }
   }
-  /* Test failed.  Print formatted table of expected vs actual args. */
-  printf(": FAIL\n\n");
-  copt_dbg_dump();
-  printf("%s:%d: ", __FILE__, test_line);
-  print_args(tc->argc, tc->argv, 0);
-  printf("\n");
+  /* Test failed.  Log formatted table of expected vs actual args. */
+  printf(": FAIL\n");
+  new_failed_test();
+  tmp = copt_dbg_dump();
+  logf("%s", tmp);
+  free(tmp);
+  logf("%s:%d: ", __FILE__, test_line);
+  logf_args(tc->argc, tc->argv, 0);
+  logf("\n");
   for (i = 0; i < tc->argc && !strcmp(tc->argv[i], tc->argv_copy[i]); i++)
     continue;
   if (i != tc->argc) {
-    printf("(reordered to ");
-    print_args(tc->argc, tc->argv_copy, 0);
-    printf(")\n");
+    logf("(reordered to ");
+    logf_args(tc->argc, tc->argv_copy, 0);
+    logf(")\n");
   }
   if (tc->expect_cnt != tc->actual_cnt)
-    printf("  expected %lu args, found %lu\n",
-           (long) tc->expect_cnt, (long) tc->actual_cnt);
+    logf("  expected %lu args, found %lu\n",
+         (long) tc->expect_cnt, (long) tc->actual_cnt);
   testcase_dump(tc);
-  printf("\n");
 }
 
 static void
@@ -1314,10 +1383,15 @@ main(void)
   run_copt_tests(1);
 
   printf("----\n");
-  if (passed_test_cnt == total_test_cnt)
+  if (failed_test_cnt == 0)
     printf("Passed all %lu tests\n", (long) total_test_cnt);
-  else
+  else {
+    size_t i;
+    for (i = 0; i < failed_test_cnt; i++)
+      printf("\n%s\n", fail_info[i]), free(fail_info[i]);
+    free(fail_info);
     printf("FAILED %lu of %lu tests\n",
-      (long) (total_test_cnt - passed_test_cnt), (long) total_test_cnt);
-  return passed_test_cnt != total_test_cnt;
+      (long) failed_test_cnt, (long) total_test_cnt);
+  }
+  return !!failed_test_cnt;
 }
