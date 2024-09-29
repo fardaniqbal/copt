@@ -377,50 +377,57 @@ test_end(struct testcase *tc, int reorder)
     free((void *) tc->actual[i].val); /* discard const */
 }
 
+static void
+run_copt_tests(int reorder)
+{
+  /* Permutations of these args/opts/optargs are included between
+     TEST_BEGIN()/TEST_END() pairs. */
+  static const char *const pre_args[][3] = {
+    {0}, {"pre-foo"}, {"pre-foo", "pre-bar"}, {"-"},
+    {"pre-asdf", "-"},  {"-", "pre-fdsa"}
+  };
+  static const char *const post_args[][3] = {
+    {0}, {"post-foo"}, {"post-foo", "post-bar"}, {"-"},
+    {"post-asdf", "-"}, {"-", "post-fdsa"}
+  };
+  static const char *const opts_[][3] = { /* input opts */
+    {0}, {"-x"}, {"-x","-y"}, {"-xy"}, {"-xyzzy"}, {"-m"},
+    {"--multiple-opts"}, {"-xm"}, {"-mx"}, {"-s","sarg"},
+    {"-ssarg"}, {"-sx"}, {"-xssarg"}, {"-xs","sarg"}
+  };
+  static const struct arg exp_[][6] = { /* expected output */
+    {{ARGTYPE_NULL}}, {{ARGTYPE_OPT,"x"}},
+    {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"y"}},
+    {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"y"}},
+    {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"y"}, {ARGTYPE_OPT,"z"},
+     {ARGTYPE_OPT,"z"}, {ARGTYPE_OPT,"y"}},
+    {{ARGTYPE_OPT,"m|multiple-opts"}},
+    {{ARGTYPE_OPT,"m|multiple-opts"}},
+    {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"m|multiple-opts"}},
+    {{ARGTYPE_OPT,"m|multiple-opts"}, {ARGTYPE_OPT,"x"}},
+    {{ARGTYPE_OPT,"s"}, {ARGTYPE_OPTARG,"sarg"}},
+    {{ARGTYPE_OPT,"s"}, {ARGTYPE_OPTARG,"sarg"}},
+    {{ARGTYPE_OPT,"s"}, {ARGTYPE_OPTARG,"x"}},
+    {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"s"},
+     {ARGTYPE_OPTARG,"sarg"}},
+    {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"s"},
+     {ARGTYPE_OPTARG,"sarg"}}
+  };
+
 #define TEST_BEGIN(use_pre_args, use_post_args, test_args) {            \
-    static const char *pre_args[][3] = {                                \
-      {0}, {"pre-foo"}, {"pre-foo", "pre-bar"}, {"-"},                  \
-      {"pre-asdf", "-"},  {"-", "pre-fdsa"}                             \
-    };                                                                  \
-    static const char *post_args[][3] = {                               \
-      {0}, {"post-foo"}, {"post-foo", "post-bar"}, {"-"},               \
-      {"post-asdf", "-"}, {"-", "post-fdsa"}                            \
-    };                                                                  \
     char **test_args_ = (test_args);                                    \
-    const size_t pre_cnt_ = (use_pre_args) ? 6 : 1;                     \
-    const size_t post_cnt_ = (use_post_args) ? 6 : 1;                   \
+    const size_t pre_cnt_ = !(use_pre_args) ? 1 :                       \
+                            sizeof pre_args / sizeof *pre_args;         \
+    const size_t post_cnt_ = !(use_post_args) ? 1 :                     \
+                             sizeof post_args / sizeof *post_args;      \
     size_t i_, j_, k_, pre_, post_;                                     \
                                                                         \
     for (pre_ = 0; pre_ < pre_cnt_; pre_++) {                           \
       for (post_ = 0; post_ < post_cnt_; post_++) {                     \
-        static const char *opts_[][3] = { /* input opts */              \
-          {0}, {"-x"}, {"-x","-y"}, {"-xy"}, {"-xyzzy"}, {"-m"},        \
-          {"--multiple-opts"}, {"-xm"}, {"-mx"}, {"-s","sarg"},         \
-          {"-ssarg"}, {"-sx"}, {"-xssarg"}, {"-xs","sarg"}              \
-        };                                                              \
-        static const struct arg exp_[][6] = { /* expected output */     \
-          {{ARGTYPE_NULL}}, {{ARGTYPE_OPT,"x"}},                        \
-          {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"y"}},                       \
-          {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"y"}},                       \
-          {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"y"}, {ARGTYPE_OPT,"z"},     \
-           {ARGTYPE_OPT,"z"}, {ARGTYPE_OPT,"y"}},                       \
-          {{ARGTYPE_OPT,"m|multiple-opts"}},                            \
-          {{ARGTYPE_OPT,"m|multiple-opts"}},                            \
-          {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"m|multiple-opts"}},         \
-          {{ARGTYPE_OPT,"m|multiple-opts"}, {ARGTYPE_OPT,"x"}},         \
-          {{ARGTYPE_OPT,"s"}, {ARGTYPE_OPTARG,"sarg"}},                 \
-          {{ARGTYPE_OPT,"s"}, {ARGTYPE_OPTARG,"sarg"}},                 \
-          {{ARGTYPE_OPT,"s"}, {ARGTYPE_OPTARG,"x"}},                    \
-          {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"s"},                        \
-           {ARGTYPE_OPTARG,"sarg"}},                                    \
-          {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"s"},                        \
-           {ARGTYPE_OPTARG,"sarg"}}                                     \
-        };                                                              \
         assert(sizeof opts_/sizeof *opts_ == sizeof exp_/sizeof *exp_); \
         for (j_ = 0; j_ < sizeof opts_ / sizeof *opts_; j_++) {         \
           for (k_ = 0; k_ < sizeof opts_ / sizeof *opts_; k_++) {       \
             int argbrk_done_ = 0, test_args_done_ = 0;                  \
-            size_t exp_i_;                                              \
             (void) test_args_done_; /* set-but-not-used warning */      \
             test_begin(&tc, NULL);                                      \
             test_addargs(&tc, (char **) opts_[j_]);                     \
@@ -428,8 +435,8 @@ test_end(struct testcase *tc, int reorder)
             test_addargs(&tc, (char **) opts_[k_]);                     \
             test_addargs(&tc, test_args_);                              \
             test_addargs(&tc, (char **) post_args[post_]);              \
-            for (exp_i_ = 0; exp_[j_][exp_i_].type; exp_i_++)           \
-              expect(&tc, exp_[j_][exp_i_].type, exp_[j_][exp_i_].val); \
+            for (i_ = 0; exp_[j_][i_].type; i_++)                       \
+              expect(&tc, exp_[j_][i_].type, exp_[j_][i_].val);         \
             if (!reorder && pre_args[pre_][0]) {                        \
               for (i_ = 0; pre_args[pre_][i_]; i_++)                    \
                 expect_arg(&tc, pre_args[pre_][i_]);                    \
@@ -467,9 +474,6 @@ test_end(struct testcase *tc, int reorder)
     free(test_args_);                                                   \
   }
 
-static void
-run_copt_tests(int reorder)
-{
   struct testcase tc;
   size_t i;
 
