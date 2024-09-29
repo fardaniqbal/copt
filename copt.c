@@ -239,14 +239,12 @@ copt_done(struct copt *opt)
    string.  (e.g. OPTSPEC="F|f|foo" returns true when next option is "-F",
    "-f", or "--foo", accounting for grouped short options. */
 int
-copt_opt(struct copt *opt, const char *optspec)
+copt_opt(const struct copt *opt, const char *optspec)
 {
   const char *start, *end;
   char *arg = opt->argv[opt->idx];
   size_t arglen;
   assert((arg && arg[0] == '-' && arg[1] != '\0') || !!!"not option");
-  copt_dbg("entering (optspec=%s, idx=%d, subidx=%d, argidx=%d)\n",
-           optspec, opt->idx, opt->subidx, opt->argidx);
 
   if (opt->subidx > 0) /* in (possibly grouped) short option */
     arg += opt->subidx, arglen = 1; 
@@ -260,7 +258,6 @@ copt_opt(struct copt *opt, const char *optspec)
     if ((size_t) (end-start) == arglen && !memcmp(arg, start, arglen))
       return copt_dbg("found matching opt '%s'\n", arg), 1;
   }
-  copt_dbg("no match in '%s'\n", optspec);
   return 0;
 }
 
@@ -296,7 +293,7 @@ copt_arg(struct copt *opt)
    returns index of first non-option argument in the argv array with which
    the given copt was initialized.  In idiomatic usage, you'd call this
    after your copt_done() loop terminates to get non-option args. */
-int copt_idx(struct copt *opt) { return opt->idx; }
+int copt_idx(const struct copt *opt) { return opt->idx; }
 
 /* Return the option found by most recent call to copt_done().  To meet
    copt's goal of zero heap allocation, the returned string is valid _only_
@@ -304,4 +301,4 @@ int copt_idx(struct copt *opt) { return opt->idx; }
    copt is in scope.  Make a copy if you need it longer.  Intended use is
    to show an error message when encountering unknown options, for which
    idiomatic usage typically doesn't require making a copy. */
-char *copt_curopt(struct copt *opt) { return opt->curopt; }
+char *copt_curopt(const struct copt *opt) { return opt->curopt; }

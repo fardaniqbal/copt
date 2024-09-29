@@ -25,22 +25,24 @@ static size_t failed_test_cnt;
 static int test_line;
 static char **fail_info; /* array of failed_test_cnt strings */
 
-/* Create a new fail_info entry and return a pointer to it. */
+/* Make sure fail_info array has space for failed_test_cnt+1 items. */
 static char *
-new_failed_test(void)
+logf_ensure_cap(void)
 {
-  const size_t infosz = 2;
-  char *strbuf, **info = fail_info;
-  failed_test_cnt++;
-  if (info)
-    info = (char **) realloc(info, failed_test_cnt * sizeof *fail_info);
+  char **info = fail_info;
+  static size_t last_cnt;
+  size_t cnt = failed_test_cnt + 1;
+  if (!info)
+    info = (char **) calloc(cnt, sizeof *fail_info);
   else
-    info = (char **) malloc(failed_test_cnt * sizeof *fail_info);
-  if (!info || !(strbuf = (char *) malloc(infosz)))
+    info = (char **) realloc(info, cnt * sizeof *fail_info);
+  if (!info)
     printf("%s:%d: out of memory\n", __FILE__, test_line), exit(1);
+  if (cnt > last_cnt)
+    info[cnt-1] = NULL;
   fail_info = info;
-  strbuf[0] = '\0';
-  return fail_info[failed_test_cnt-1] = strbuf;
+  last_cnt = cnt;
+  return fail_info[failed_test_cnt];
 }
 
 /* Print message to current fail_info string, reallocating if necessary. */
@@ -50,11 +52,13 @@ __extension__ __attribute__((format(printf, 1, 2)))
 static void
 logf(const char *fmt, ...)
 {
-  char *buf, *cp;
+  /* Using strlen on every call isn't the most efficient implementation in
+     terms of big-O, but should suffice for testing purposes. */
+  char *cp, *buf = logf_ensure_cap();
   int rc, basecap, cap = 1;
   va_list ap;
-  assert(failed_test_cnt || !!!"forgot to call new_failed_test()");
-  buf = fail_info[failed_test_cnt-1];
+  if (buf == NULL && (buf = (char *) calloc(1,1)) == NULL)
+    printf("not enough memory for log\n"), exit(1);
   basecap = strlen(buf);
   cp = buf + basecap;
 
@@ -62,14 +66,15 @@ logf(const char *fmt, ...)
   va_start(ap, fmt);
   while ((rc = vsnprintf(cp, cap, fmt, ap)) >= cap || rc < 0) {
     va_end(ap);
-    cap = rc >= 0 ? rc+1 : cap*2; /* just ignore int overflow */
+    /* Just ignore int overflow. */
+    cap = rc >= 0 ? rc+1 : (basecap+cap) * 2 - basecap;
     if ((buf = (char *) realloc(buf, basecap + cap)) == NULL)
-      printf("not enough memory for failure log\n"), exit(1);
+      printf("not enough memory for fmt '%s'\n", fmt), exit(1);
     cp = buf + basecap;
     va_start(ap, fmt);
   }
   va_end(ap);
-  fail_info[failed_test_cnt-1] = buf;
+  fail_info[failed_test_cnt] = buf;
 }
 
 /* Quote STR in static circular buffer and return pointer to it. */
@@ -306,7 +311,6 @@ test_verify(struct testcase *tc)
   }
   /* Test failed.  Log formatted table of expected vs actual args. */
   printf(": FAIL\n");
-  new_failed_test();
   tmp = copt_dbg_dump();
   logf("%s", tmp);
   free(tmp);
@@ -324,6 +328,7 @@ test_verify(struct testcase *tc)
     logf("  expected %lu args, found %lu\n",
          (long) tc->expect_cnt, (long) tc->actual_cnt);
   testcase_dump(tc);
+  failed_test_cnt++;
 }
 
 static void
@@ -431,6 +436,7 @@ test_run(struct testcase *tc, int reorder)
               for (i_ = 0; pre_args[pre_][i_]; i_++)                    \
                 expect_arg(&tc, pre_args[pre_][i_]);                    \
               argbrk_done_ = 1;                                         \
+            } { logf("*** AFTER TEST_ARGBRK() ***\n")
 
 #define TEST_END()                                                      \
             }                                                           \
@@ -1379,6 +1385,7 @@ run_copt_tests(int reorder)
 int
 main(void)
 {
+  size_t i;
   run_copt_tests(0);
   run_copt_tests(1);
 
@@ -1386,12 +1393,13 @@ main(void)
   if (failed_test_cnt == 0)
     printf("Passed all %lu tests\n", (long) total_test_cnt);
   else {
-    size_t i;
     for (i = 0; i < failed_test_cnt; i++)
-      printf("\n%s\n", fail_info[i]), free(fail_info[i]);
-    free(fail_info);
+      printf("\n%s\n", fail_info[i]);
     printf("FAILED %lu of %lu tests\n",
       (long) failed_test_cnt, (long) total_test_cnt);
   }
+  for (i = 0; i < sizeof fail_info / sizeof *fail_info; i++)
+    free(fail_info[i]);
+  free(fail_info);
   return !!failed_test_cnt;
 }

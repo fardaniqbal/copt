@@ -24,7 +24,7 @@
 #ifndef COPT_H_INCLUDED_
 #define COPT_H_INCLUDED_
 
-/* Stores state of option parser.  Do not access fields directly. */
+/* Option parser's state.  Do not access fields directly. */
 struct copt {
   char *curopt;
   char **argv;
@@ -37,11 +37,11 @@ struct copt {
 };
 
 struct copt copt_init(int argc, char **argv, int reorder);
-int   copt_done(struct copt *);    /* return false if more opts remain */
-int   copt_opt(struct copt *, const char *); /* true if given opt found */
-char *copt_arg(struct copt *);     /* return arg from last opt */
-int   copt_idx(struct copt *);     /* index of current arg */
-char *copt_curopt(struct copt *);  /* return most recent option */
-char *copt_dbg_dump(void); /* NOT REENTRANT; INTERNAL DEBUG USE ONLY */
+int    copt_done(struct copt *);          /* false if more opts remain */
+int    copt_opt(const struct copt *, const char *); /* true if opt found */
+char  *copt_arg(struct copt *);           /* return arg from last opt */
+char  *copt_curopt(const struct copt *);  /* return most recent option */
+int    copt_idx(const struct copt *);     /* current index into argv */
+char  *copt_dbg_dump(void); /* INTERNAL DEBUG USE ONLY; NOT REENTRANT */
 
 #endif /* COPT_H_INCLUDED_ */
