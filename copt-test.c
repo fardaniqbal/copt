@@ -77,22 +77,6 @@ logf(const char *fmt, ...)
   fail_info[failed_test_cnt] = buf;
 }
 
-/* Quote STR in static circular buffer and return pointer to it. */
-static const char *
-quotestr(const char *str)
-{
-  static char buf[4096];
-  static size_t i;
-  size_t len = str ? strlen(str) + 3 : strlen("(null)") + 1; 
-  size_t start = i + len <= sizeof buf ? i : 0;
-  if (!str)
-    snprintf(buf+start, sizeof buf - start - 1, "(null)");
-  else
-    snprintf(buf+start, sizeof buf - start - 1, "'%s'", str);
-  i = start + strlen(buf+start) + 1;
-  return buf+start;
-}
-
 /* Return a malloc-d array of the given string varargs. */
 static char **
 mkargv(const char *first, ...)
@@ -188,8 +172,8 @@ testcase_dump(const struct testcase *tc)
       ev = tc->expect[i].val, et = argtype_str(tc->expect[i].type);
     if (i < tc->actual_cnt)
       av = tc->actual[i].val, at = argtype_str(tc->actual[i].type);
-    logf("%-*s %-*s | ", val_w, quotestr(ev), type_w, et);
-    logf("%-*s %-*s\n",  val_w, quotestr(av), type_w, at);
+    logf("%-*s %-*s | ", val_w, ev, type_w, et);
+    logf("%-*s %-*s\n",  val_w, av, type_w, at);
   }
 }
 
@@ -259,7 +243,7 @@ test_addargs(struct testcase *tc, char **argv)
   }
 }
 
-/* Print quoted args into NBYTE-size buffer DST, truncating if longer than
+/* Print args into NBYTE-size buffer DST, truncating if longer than
    MAX_WIDTH chars.  Return actual required size of DST, including \0. */
 static size_t
 sprint_args(char *dst, size_t nbyte,
@@ -267,11 +251,11 @@ sprint_args(char *dst, size_t nbyte,
 {
   size_t i, cp;
   assert(dst != NULL || nbyte == 0);
-  for (i = cp = 0; i < argc; cp += strlen(argv[i])+3, i++)
-    if (cp + strlen(argv[i]) + 3 < nbyte)
-      strcat(strcat(strcpy(dst+cp, "'"), argv[i]), "' ");
+  for (i = cp = 0; i < argc; cp += strlen(argv[i])+1, i++)
+    if (cp + strlen(argv[i]) + 1 < nbyte)
+      strcat(strcpy(dst+cp, argv[i]), " ");
     else if (cp < nbyte)
-      memcpy(dst+cp, quotestr(argv[i]), nbyte-1-cp);
+      memcpy(dst+cp, argv[i], nbyte-1-cp);
   if (4 <= max_width && max_width < cp && max_width < nbyte)
     strcpy(dst+max_width-4, "... ");
   if (max_width > 0)
@@ -440,8 +424,8 @@ run_copt_tests(int reorder)
             if (!reorder && pre_args[pre_][0]) {                        \
               for (i_ = 0; pre_args[pre_][i_]; i_++)                    \
                 expect_arg(&tc, pre_args[pre_][i_]);                    \
-              for (i_ = 0; opts_[k_][i_]; i_++) \
-                expect_arg(&tc, opts_[k_][i_]); \
+              for (i_ = 0; opts_[k_][i_]; i_++)                         \
+                expect_arg(&tc, opts_[k_][i_]);                         \
               for (i_ = 0; test_args_[i_]; i_++)                        \
                 expect_arg(&tc, test_args_[i_]);                        \
               test_args_done_ = 1;                                      \
