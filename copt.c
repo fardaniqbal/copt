@@ -10,7 +10,7 @@
 
 /* - debug logging ----------------------------------------------------- */
 
-#if 0 /* make this #if 0 to enable debug logging, #if 1 to disable */
+#if 1 /* make this #if 0 to enable debug logging, #if 1 to disable */
 static void copt_dbg_reset(void) {}
 static void copt_dbg(const char *fmt, ...) { (void) fmt; }
 static void copt_dbg_args(struct copt *opt) { (void) opt; }
