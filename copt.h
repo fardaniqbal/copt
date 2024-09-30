@@ -3,23 +3,26 @@
 
    Example usage:
    
+   int got_a = 0;
+   int got_withducks = 0;
    char *outfile = NULL;
    char *infile;
+
    struct copt opt = copt_init(argc, argv, 1);
    while (!copt_done(&opt)) {
      if (copt_opt(&opt, "a") {
-       ... handle short option "-a" ...
-     } else if (copt_opt(&opt, "longopt")) {
-       ... handle long option "--longopt" ...
+       got_a = 1;                 // found -a (maybe grouped, e.g. -xyaz)
+     } else if (copt_opt(&opt, "withducks")) {
+       got_withducks = 1;         // found --withducks
      } else if (copt_opt(&opt, "o|outfile")) {
-       ... handle both short option "-o" and long option "--outfile" ...
-       outfile = copt_arg(&opt);
+       outfile = copt_arg(&opt);  // found -o ARG, -oARG, -xyzoARG,
+                                  // --outfile ARG, --outfile=ARG, etc
      } else {
        fprintf(stderr, "unknown option '%s'\n", copt_curopt(&opt));
-       usage();
+       usage();                   // found unknown opt
      }
    }
-   infile = argv[copt_idx(&opt)];
+   infile = argv[copt_idx(&opt)]; // copt_idx() gives first non-option arg
    ...etc... */
 #ifndef COPT_H_INCLUDED_
 #define COPT_H_INCLUDED_
