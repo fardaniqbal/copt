@@ -374,12 +374,12 @@ run_copt_tests(int reorder)
     {0}, {"post-foo"}, {"post-foo", "post-bar"}, {"-"},
     {"post-asdf", "-"}, {"-", "post-fdsa"}
   };
-  static const char *const opts_[][3] = { /* input opts */
+  static const char *const opts[][3] = { /* input opts */
     {0}, {"-x"}, {"-x","-y"}, {"-xy"}, {"-xyzzy"}, {"-m"},
     {"--multiple-opts"}, {"-xm"}, {"-mx"}, {"-s","sarg"},
     {"-ssarg"}, {"-sx"}, {"-xssarg"}, {"-xs","sarg"}
   };
-  static const struct arg exp_[][6] = { /* expected output */
+  static const struct arg exp[][6] = { /* expected output */
     {{ARGTYPE_NULL}}, {{ARGTYPE_OPT,"x"}},
     {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"y"}},
     {{ARGTYPE_OPT,"x"}, {ARGTYPE_OPT,"y"}},
@@ -408,30 +408,30 @@ run_copt_tests(int reorder)
                                                                         \
     for (pre_ = 0; pre_ < pre_cnt_; pre_++) {                           \
       for (post_ = 0; post_ < post_cnt_; post_++) {                     \
-        assert(sizeof opts_/sizeof *opts_ == sizeof exp_/sizeof *exp_); \
-        for (j_ = 0; j_ < sizeof opts_ / sizeof *opts_; j_++) {         \
-          for (k_ = 0; k_ < sizeof opts_ / sizeof *opts_; k_++) {       \
+        assert(sizeof opts / sizeof *opts == sizeof exp / sizeof *exp); \
+        for (j_ = 0; j_ < sizeof opts / sizeof *opts; j_++) {           \
+          for (k_ = 0; k_ < sizeof opts / sizeof *opts; k_++) {         \
             int argbrk_done_ = 0, test_args_done_ = 0;                  \
             (void) test_args_done_; /* set-but-not-used warning */      \
             test_begin(&tc, NULL);                                      \
-            test_addargs(&tc, (char **) opts_[j_]);                     \
+            test_addargs(&tc, (char **) opts[j_]);                      \
             test_addargs(&tc, (char **) pre_args[pre_]);                \
-            test_addargs(&tc, (char **) opts_[k_]);                     \
+            test_addargs(&tc, (char **) opts[k_]);                      \
             test_addargs(&tc, test_args_);                              \
             test_addargs(&tc, (char **) post_args[post_]);              \
-            for (i_ = 0; exp_[j_][i_].type; i_++)                       \
-              expect(&tc, exp_[j_][i_].type, exp_[j_][i_].val);         \
+            for (i_ = 0; exp[j_][i_].type; i_++)                        \
+              expect(&tc, exp[j_][i_].type, exp[j_][i_].val);           \
             if (!reorder && pre_args[pre_][0]) {                        \
               for (i_ = 0; pre_args[pre_][i_]; i_++)                    \
                 expect_arg(&tc, pre_args[pre_][i_]);                    \
-              for (i_ = 0; opts_[k_][i_]; i_++)                         \
-                expect_arg(&tc, opts_[k_][i_]);                         \
+              for (i_ = 0; opts[k_][i_]; i_++)                          \
+                expect_arg(&tc, opts[k_][i_]);                          \
               for (i_ = 0; test_args_[i_]; i_++)                        \
                 expect_arg(&tc, test_args_[i_]);                        \
               test_args_done_ = 1;                                      \
             } else {                                                    \
-              for (i_ = 0; exp_[k_][i_].type; i_++)                     \
-                expect(&tc, exp_[k_][i_].type, exp_[k_][i_].val);       \
+              for (i_ = 0; exp[k_][i_].type; i_++)                      \
+                expect(&tc, exp[k_][i_].type, exp[k_][i_].val);         \
               ((void) 0)
 
 #define TEST_ARGBRK()                                                   \
