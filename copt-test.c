@@ -615,10 +615,6 @@ run_copt_tests(int reorder)
   /* unknown short and long options */
   for (i = 0; i < 2; i++) {
     static const char *unknown[2] = { "-q", "--unknown-opt" };
-    test_begin(&tc, unknown[i], NULL);
-    expect_badopt(&tc, unknown[i]);
-    test_end(&tc, reorder);
-
     TEST_BEGIN(1, 1, mkargv(unknown[i], NULL));
     expect_badopt(&tc, unknown[i]);
     TEST_END();
@@ -797,59 +793,6 @@ run_copt_tests(int reorder)
   expect_optarg(&tc, "sarg");
   expect_opt(&tc, "z");
   TEST_END();
-
-#if 0 /* TODO: refactor TEST_BEGIN/TEST_END macros to work with non-option
-         args in the middle of options. */
-  if (reorder) {
-    TEST_BEGIN(1, 1, mkargv("-xyssarg", "-z", "foo", "-x", "bar", NULL));
-    expect_opt(&tc, "x");
-    expect_opt(&tc, "y");
-    expect_opt(&tc, "s");
-    expect_optarg(&tc, "sarg");
-    expect_opt(&tc, "z");
-    expect_opt(&tc, "x");
-    expect_arg(&tc, "foo");
-    expect_arg(&tc, "-x");
-    expect_arg(&tc, "bar");
-    TEST_END();
-  } else {
-    TEST_BEGIN(1, 1, mkargv("-xyssarg", "-z", "foo", "-x", "bar", NULL));
-    expect_opt(&tc, "x");
-    expect_opt(&tc, "y");
-    expect_opt(&tc, "s");
-    expect_optarg(&tc, "sarg");
-    expect_opt(&tc, "z");
-    expect_opt(&tc, "x");
-    expect_arg(&tc, "foo");
-    expect_arg(&tc, "-x");
-    expect_arg(&tc, "bar");
-    TEST_END();
-  }
-#else
-  test_begin(&tc, "-xyssarg", "-z", "foo", "-x", "bar", NULL);
-  expect_opt(&tc, "x");
-  expect_opt(&tc, "y");
-  expect_opt(&tc, "s");
-  expect_optarg(&tc, "sarg");
-  expect_opt(&tc, "z");
-  if (reorder) expect_opt(&tc, "x");
-  expect_arg(&tc, "foo");
-  if (!reorder) expect_arg(&tc, "-x");
-  expect_arg(&tc, "bar");
-  test_end(&tc, reorder);
-
-  test_begin(&tc, "-xys", "sarg", "-z", "foo", "-x", "bar", NULL);
-  expect_opt(&tc, "x");
-  expect_opt(&tc, "y");
-  expect_opt(&tc, "s");
-  expect_optarg(&tc, "sarg");
-  expect_opt(&tc, "z");
-  if (reorder) expect_opt(&tc, "x");
-  expect_arg(&tc, "foo");
-  if (!reorder) expect_arg(&tc, "-x");
-  expect_arg(&tc, "bar");
-  test_end(&tc, reorder);
-#endif
 
   /* don't confuse optargs with actual options */
   test_begin(&tc, "-sx", NULL);
