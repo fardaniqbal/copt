@@ -177,8 +177,8 @@ copt_reorder_opt(struct copt *opt)
 }
 
 /* Advance to next option.  Return false while options remain in the arg
-   array passed to copt_init().  Return true after all options have been
-   consumed. */
+   array passed to copt_init().  Return true when all options have been
+   consumed, after which you'd call copt_idx() to get non-option args. */
 int
 copt_done(struct copt *opt)
 {
@@ -189,7 +189,7 @@ copt_done(struct copt *opt)
            opt->idx, opt->subidx, opt->argidx);
   if (opt->idx >= opt->argc)
     return 1;
-  if (opt->subidx > 0) {  /* in the middle of grouped short options */
+  if (opt->subidx > 0) {  /* inside grouped short options */
     char so;
     copt_dbg("in short options (idx=%d, subidx=%d)\n", i, opt->subidx);
     assert(i < opt->argc);
@@ -211,19 +211,19 @@ copt_done(struct copt *opt)
   copt_dbg("reorder? %d\n", opt->reorder);
   if (opt->reorder)
     copt_reorder_opt(opt);
-  if (!strcmp(opt->argv[i], "--")) /* just "--" means done */
+  if (!strcmp(opt->argv[i], "--"))  /* just "--" means done */
     return copt_dbg("found '--', done\n"), opt->idx++, 1;
   copt_dbg("checking for non-option\n");
-  if (opt->argv[i][0] != '-') /* found non-option */
+  if (opt->argv[i][0] != '-')       /* found non-option */
     return 1;
   copt_dbg("checking for '-'\n");
-  if (opt->argv[i][1] == '\0') /* arg is just "-" */
+  if (opt->argv[i][1] == '\0')      /* arg is just "-" */
     return 1;
-  if (opt->argv[i][1] != '-') { /* entering short option group */
+  if (opt->argv[i][1] != '-') {     /* entering short option group */
     copt_dbg("entering short option group\n");
     opt->subidx = 1;
     opt->curopt = copt_set_shortopt(opt, opt->argv[i][1]);
-  } else {                      /* found long option */
+  } else {                          /* found long option */
     copt_dbg("found long option\n");
     assert(opt->argv[i][0] == '-' && opt->argv[i][1] == '-');
     opt->subidx = 0;
@@ -272,21 +272,20 @@ copt_arg(struct copt *opt)
   char ch, *eq;
   opt->subidx = opt->argidx = 0;
 
-  if (subidx > 0) {        /* in (possibly grouped) short option */
+  if (subidx > 0) {             /* in (possibly grouped) short option */
     if ((ch = opt->argv[opt->idx][subidx+1]) != '\0')
       return opt->argv[opt->idx] + subidx + 1 + (ch == '=');
   } else if ((eq = strchr(opt->argv[opt->idx], '=')) != NULL)
-    return eq+1;           /* --long-option=ARG */
-  if (argidx >= opt->argc) /* reordered opt, no arg available */
+    return eq+1;                /* --long-option=ARG */
+  if (argidx >= opt->argc)      /* reordered opt, no arg available */
     return NULL;
-  if (argidx > opt->idx)   /* reordered opt, arg available */
+  if (argidx > opt->idx)        /* reordered opt, arg available */
     copt_rotate_right(opt->argv + opt->idx + 1, argidx - opt->idx);
   if (opt->idx+1 >= opt->argc || (opt->argv[opt->idx+1][0] == '-' &&
                                   opt->argv[opt->idx+1][1] != '\0'))
     return NULL; /* not optarg if starts with '-' but isn't _only_ '-' */
-  opt->idx++;
-  assert(opt->idx < opt->argc);
-  return opt->argv[opt->idx];
+  assert(opt->idx+1 < opt->argc);
+  return opt->argv[++opt->idx]; /* optarg is the next argv item */
 }
 
 /* After copt_done() indicates you've consumed all options, this function
@@ -298,7 +297,8 @@ int copt_idx(const struct copt *opt) { return opt->idx; }
 /* Return the option found by most recent call to copt_done().  To meet
    copt's goal of zero heap allocation, the returned string is valid _only_
    until the next call on the given copt object, and _only_ while the given
-   copt is in scope.  Make a copy if you need it longer.  Intended use is
-   to show an error message when encountering unknown options, for which
-   idiomatic usage typically doesn't require making a copy. */
+   copt is in scope.  Caller must make a copy if needed longer.  Intended
+   use is to show an error message when encountering unknown options or
+   option with missing argument, for which idiomatic usage typically
+   doesn't require making a copy. */
 char *copt_curopt(const struct copt *opt) { return opt->curopt; }
