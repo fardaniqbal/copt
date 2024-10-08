@@ -19,7 +19,7 @@
        out = copt_arg(&opt);   // found -o, -oARG, -o ARG, -o=ARG, -xyoARG,
                                // --outfile ARG, --outfile=ARG, etc
      } else if (copt_opt(&opt, "c|color=")) {
-       color = copt_arg(&opt); // like above, but _no space_ between option
+       color = copt_arg(&opt); // same, but _disallow space_ between option
                                // and ARG (--color=ARG, _not_ --color ARG)
      } else {
        fprintf(stderr, "unknown option '%s'\n", copt_curopt(&opt));
