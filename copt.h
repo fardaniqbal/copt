@@ -5,24 +5,28 @@
    
    int got_a = 0;
    int got_withducks = 0;
-   char *outfile = NULL;
-   char *infile;
+   char *color = "default";
+   char *out = NULL;
+   char *in;
 
    struct copt opt = copt_init(argc, argv, 1);
    while (!copt_done(&opt)) {
      if (copt_opt(&opt, "a") {
-       got_a = 1;                 // found -a (maybe grouped, e.g. -xyaz)
+       got_a = 1;              // found -a (maybe grouped, e.g. -xyaz)
      } else if (copt_opt(&opt, "withducks")) {
-       got_withducks = 1;         // found --withducks
+       got_withducks = 1;      // found --withducks
      } else if (copt_opt(&opt, "o|outfile")) {
-       outfile = copt_arg(&opt);  // found -o ARG, -oARG, -xyzoARG,
-                                  // --outfile ARG, --outfile=ARG, etc
+       out = copt_arg(&opt);   // found -o, -oARG, -o ARG, -o=ARG, -xyoARG,
+                               // --outfile ARG, --outfile=ARG, etc
+     } else if (copt_opt(&opt, "c|color=")) {
+       color = copt_arg(&opt); // like above, but _no space_ between option
+                               // and ARG (--color=ARG, _not_ --color ARG)
      } else {
        fprintf(stderr, "unknown option '%s'\n", copt_curopt(&opt));
-       usage();                   // found unknown opt
+       usage();                // found unknown opt
      }
    }
-   infile = argv[copt_idx(&opt)]; // copt_idx() gives first non-option arg
+   in = argv[copt_idx(&opt)]; // copt_idx() gives first non-option arg
    ...etc... */
 #ifndef COPT_H_INCLUDED_
 #define COPT_H_INCLUDED_
