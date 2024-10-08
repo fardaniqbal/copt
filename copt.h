@@ -30,6 +30,9 @@
    ...etc... */
 #ifndef COPT_H_INCLUDED_
 #define COPT_H_INCLUDED_
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Option parser's state.  Do not access fields directly. */
 struct copt {
@@ -51,4 +54,7 @@ char  *copt_curopt(const struct copt *);  /* return most recent option */
 int    copt_idx(const struct copt *);     /* current index into argv */
 char  *copt_dbg_dump(void); /* INTERNAL DEBUG USE ONLY; NOT REENTRANT */
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* COPT_H_INCLUDED_ */
