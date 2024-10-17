@@ -39,16 +39,16 @@ struct copt {
   char *curopt;
   char **argv;
   int argc;
-  int idx;
-  int subidx;
+  int idx;            /* current index into argv */
+  int subidx;         /* > 0 if in grouped short opts */
   int argidx;         /* index of opt's (potential) arg if reordering */
-  char shortopt[3];
-  unsigned reorder:1;
+  char shortopt[3];   /* to get last short opt even if grouped */
+  unsigned reorder:1; /* true if allowing opts mixed with non-opts */
 };
 
 struct copt copt_init(int argc, char **argv, int reorder);
 int    copt_done(struct copt *);          /* false if more opts remain */
-int    copt_opt(const struct copt *, const char *); /* true if opt found */
+int    copt_opt(struct copt *, const char *); /* true if opt found */
 char  *copt_arg(struct copt *);           /* return arg from last opt */
 char  *copt_curopt(const struct copt *);  /* return most recent option */
 int    copt_idx(const struct copt *);     /* current index into argv */

@@ -239,12 +239,14 @@ copt_done(struct copt *opt)
    string.  (e.g. OPTSPEC="F|f|foo" returns true when next option is "-F",
    "-f", or "--foo", accounting for grouped short options. */
 int
-copt_opt(const struct copt *opt, const char *optspec)
+copt_opt(struct copt *opt, const char *optspec)
 {
-  const char *start, *end;
+  int arg_is_optional = optspec[strlen(optspec)-1] == '=';
   char *arg = opt->argv[opt->idx];
+  const char *start, *end;
   size_t arglen;
   assert((arg && arg[0] == '-' && arg[1] != '\0') || !!!"not option");
+  assert(!strchr(optspec, '=') || strchr(optspec, '=')[1] == '\0');
 
   if (opt->subidx > 0) /* in (possibly grouped) short option */
     arg += opt->subidx, arglen = 1; 
@@ -252,11 +254,16 @@ copt_opt(const struct copt *opt, const char *optspec)
     arg += 2, arglen = strlen(arg);
   if ((end = strchr(arg, '=')) != NULL) /* --opt=ARG form */
     arglen = arglen < (size_t) (end-arg) ? arglen : end-arg;
+
+  /* Search for current arg in pipe-delimited optspec. */
   for (start = optspec; *start != '\0'; start = end + (*end != '\0')) {
+    start += strspn(start, "|");
     end = strchr(start, '|');
     end = end ? end : start + strlen(start);
+    if (end > start && end[-1] == '=')  /* exclude '=' from optspec */
+      end--;
     if ((size_t) (end-start) == arglen && !memcmp(arg, start, arglen))
-      return copt_dbg("found matching opt '%s'\n", arg), 1;
+      return (opt->argidx = arg_is_optional ? opt->argc : opt->argidx), 1;
   }
   return 0;
 }
@@ -276,7 +283,7 @@ copt_arg(struct copt *opt)
     if ((ch = opt->argv[opt->idx][subidx+1]) != '\0')
       return opt->argv[opt->idx] + subidx + 1 + (ch == '=');
   } else if ((eq = strchr(opt->argv[opt->idx], '=')) != NULL)
-    return eq+1;                /* --long-option=ARG */
+    return eq+1;                /* --option=ARG */
   if (argidx >= opt->argc)      /* reordered opt, no arg available */
     return NULL;
   if (argidx > opt->idx)        /* reordered opt, arg available */
