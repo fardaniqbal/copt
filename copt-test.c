@@ -27,7 +27,7 @@ static char **fail_info; /* array of failed_test_cnt strings */
 
 /* Make sure fail_info array has space for failed_test_cnt+1 items. */
 static char *
-logf_ensure_cap(void)
+flog_ensure_cap(void)
 {
   char **info = fail_info;
   static size_t last_cnt;
@@ -50,11 +50,11 @@ logf_ensure_cap(void)
 __extension__ __attribute__((format(printf, 1, 2)))
 # endif
 static void
-logf(const char *fmt, ...)
+flog(const char *fmt, ...)
 {
   /* Using strlen on every call isn't the most efficient implementation in
      terms of big-O, but should suffice for testing purposes. */
-  char *cp, *buf = logf_ensure_cap();
+  char *cp, *buf = flog_ensure_cap();
   int rc, basecap, cap = 1;
   va_list ap;
   if (buf == NULL && (buf = (char *) calloc(1,1)) == NULL)
@@ -159,11 +159,11 @@ testcase_dump(const struct testcase *tc)
 {
   const int val_w = 27, type_w = 7;
   size_t i;
-  logf("%-*s | %s\n", val_w+type_w+1, "EXPECTED", "ACTUAL");
-  for (i = 0; i < (size_t) (val_w+type_w+1); i++) logf("-");
-  logf(" | ");
-  for (i = 0; i < (size_t) (val_w+type_w+1); i++) logf("-");
-  logf("\n");
+  flog("%-*s | %s\n", val_w+type_w+1, "EXPECTED", "ACTUAL");
+  for (i = 0; i < (size_t) (val_w+type_w+1); i++) flog("-");
+  flog(" | ");
+  for (i = 0; i < (size_t) (val_w+type_w+1); i++) flog("-");
+  flog("\n");
 
   for (i = 0; i < tc->expect_cnt || i < tc->actual_cnt; i++) {
     const char *ev = NULL, *et = "";
@@ -172,8 +172,8 @@ testcase_dump(const struct testcase *tc)
       ev = tc->expect[i].val, et = argtype_str(tc->expect[i].type);
     if (i < tc->actual_cnt)
       av = tc->actual[i].val, at = argtype_str(tc->actual[i].type);
-    logf("%-*s %-*s | ", val_w, ev, type_w, et);
-    logf("%-*s %-*s\n",  val_w, av, type_w, at);
+    flog("%-*s %-*s | ", val_w, ev, type_w, et);
+    flog("%-*s %-*s\n",  val_w, av, type_w, at);
   }
 }
 
@@ -267,11 +267,11 @@ sprint_args(char *dst, size_t nbyte,
 }
 
 static void
-logf_args(size_t argc, char **argv, size_t max_width)
+flog_args(size_t argc, char **argv, size_t max_width)
 {
   char buf[1024];
   sprint_args(buf, sizeof buf, argc, argv, max_width);
-  logf("%s", buf);
+  flog("%s", buf);
 }
 
 static void
@@ -296,20 +296,20 @@ test_verify(struct testcase *tc)
   /* Test failed.  Log formatted table of expected vs actual args. */
   printf(": FAIL\n");
   tmp = copt_dbg_dump();
-  logf("%s", tmp ? tmp : "");
+  flog("%s", tmp ? tmp : "");
   free(tmp);
-  logf("%s:%d: ", __FILE__, test_line);
-  logf_args(tc->argc, tc->argv, 0);
-  logf("\n");
+  flog("%s:%d: ", __FILE__, test_line);
+  flog_args(tc->argc, tc->argv, 0);
+  flog("\n");
   for (i = 0; i < tc->argc && !strcmp(tc->argv[i], tc->argv_copy[i]); i++)
     continue;
   if (i != tc->argc) {
-    logf("(reordered to ");
-    logf_args(tc->argc, tc->argv_copy, 0);
-    logf(")\n");
+    flog("(reordered to ");
+    flog_args(tc->argc, tc->argv_copy, 0);
+    flog(")\n");
   }
   if (tc->expect_cnt != tc->actual_cnt)
-    logf("  expected %lu args, found %lu\n",
+    flog("  expected %lu args, found %lu\n",
          (long) tc->expect_cnt, (long) tc->actual_cnt);
   testcase_dump(tc);
   failed_test_cnt++;
