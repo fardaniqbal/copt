@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
   char *outfile = NULL;
   char *infile;
   struct copt opt = copt_init(argc, argv, 1);
-  while (!copt_done(&opt)) {
+  while (copt_next(&opt)) {
     if (copt_opt(&opt, "a") {
       /* ...handle short option "-a"... */
     } else if (copt_opt(&opt, "longopt")) {

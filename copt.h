@@ -10,7 +10,7 @@
    char *in;
 
    struct copt opt = copt_init(argc, argv, 1);
-   while (!copt_done(&opt)) {
+   while (copt_next(&opt)) {
      if (copt_opt(&opt, "a") {
        got_a = 1;              // found -a (maybe grouped, e.g. -xyaz)
      } else if (copt_opt(&opt, "withducks")) {
@@ -26,7 +26,7 @@
        usage();                // found unknown opt
      }
    }
-   in = argv[copt_idx(&opt)]; // copt_idx() gives first non-option arg
+   in = argv[copt_idx(&opt)];  // copt_idx() gives first non-option arg
    ...etc... */
 #ifndef COPT_H_INCLUDED_
 #define COPT_H_INCLUDED_
@@ -47,7 +47,7 @@ struct copt {
 };
 
 struct copt copt_init(int argc, char **argv, int reorder);
-int    copt_done(struct copt *);          /* false if more opts remain */
+int    copt_next(struct copt *);          /* true if more opts remain */
 int    copt_opt(struct copt *, const char *); /* true if opt found */
 char  *copt_arg(struct copt *);           /* return arg from last opt */
 char  *copt_curopt(const struct copt *);  /* return most recent option */

@@ -176,11 +176,11 @@ copt_reorder_opt(struct copt *opt)
   copt_dbg("set new argidx=%d\n", opt->argidx);
 }
 
-/* Advance to next option.  Return false while options remain in the arg
-   array passed to copt_init().  Return true when all options have been
+/* Advance to next option.  Return true while options remain in the arg
+   array passed to copt_init().  Return false when all options have been
    consumed, after which you'd call copt_idx() to get non-option args. */
 int
-copt_done(struct copt *opt)
+copt_next(struct copt *opt)
 {
   int i = opt->idx;
   opt->curopt = NULL;
@@ -188,7 +188,7 @@ copt_done(struct copt *opt)
   copt_dbg("*** entering (idx=%d, subidx=%d, argidx=%d)\n",
            opt->idx, opt->subidx, opt->argidx);
   if (opt->idx >= opt->argc)
-    return 1;
+    return 0;
   if (opt->subidx > 0) {  /* inside grouped short options */
     char so;
     copt_dbg("in short options (idx=%d, subidx=%d)\n", i, opt->subidx);
@@ -198,7 +198,7 @@ copt_done(struct copt *opt)
     so = opt->argv[i][opt->subidx];
     copt_dbg("opt = '%c'\n", so);
     if (so != '\0')
-      return (opt->curopt = copt_set_shortopt(opt, so)), 0;
+      return (opt->curopt = copt_set_shortopt(opt, so)), 1;
     copt_dbg("leaving short options\n");
     opt->subidx = 0; /* leaving short option group */
   }
@@ -207,18 +207,18 @@ copt_done(struct copt *opt)
   copt_dbg("checking new elem (idx=%d, argc=%d)\n", i, opt->argc);
   assert(i <= opt->argc);
   if (i >= opt->argc)
-    return copt_dbg("i >= argc, done\n"), 1;
+    return copt_dbg("i >= argc, done\n"), 0;
   copt_dbg("reorder? %d\n", opt->reorder);
   if (opt->reorder)
     copt_reorder_opt(opt);
   if (!strcmp(opt->argv[i], "--"))  /* just "--" means done */
-    return copt_dbg("found '--', done\n"), opt->idx++, 1;
+    return copt_dbg("found '--', done\n"), opt->idx++, 0;
   copt_dbg("checking for non-option\n");
   if (opt->argv[i][0] != '-')       /* found non-option */
-    return 1;
+    return 0;
   copt_dbg("checking for '-'\n");
   if (opt->argv[i][1] == '\0')      /* arg is just "-" */
-    return 1;
+    return 0;
   if (opt->argv[i][1] != '-') {     /* entering short option group */
     copt_dbg("entering short option group\n");
     opt->subidx = 1;
@@ -230,10 +230,10 @@ copt_done(struct copt *opt)
     opt->curopt = opt->argv[i];
   }
   copt_dbg("curopt = '%s'\n", copt_curopt(opt));
-  return 0;
+  return 1;
 }
 
-/* After copt_done() indicates more options remain, call this function to
+/* After copt_next() indicates more options remain, call this function to
    act on the next option.  Return true if next option matches OPTSPEC.
    OPTSPEC gives the list of options to check against as a "|"-delimited
    string.  (e.g. OPTSPEC="F|f|foo" returns true when next option is "-F",
@@ -295,13 +295,13 @@ copt_arg(struct copt *opt)
   return opt->argv[++opt->idx]; /* optarg is the next argv item */
 }
 
-/* After copt_done() indicates you've consumed all options, this function
+/* After copt_next() indicates you've consumed all options, this function
    returns index of first non-option argument in the argv array with which
    the given copt was initialized.  In idiomatic usage, you'd call this
-   after your copt_done() loop terminates to get non-option args. */
+   after your copt_next() loop terminates to get non-option args. */
 int copt_idx(const struct copt *opt) { return opt->idx; }
 
-/* Return the option found by most recent call to copt_done().  To meet
+/* Return the option found by most recent call to copt_next().  To meet
    copt's goal of zero heap allocation, the returned string is valid _only_
    until the next call on the given copt object, and _only_ while the given
    copt is in scope.  Caller must make a copy if needed longer.  Intended

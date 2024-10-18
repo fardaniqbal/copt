@@ -325,7 +325,7 @@ test_end(struct testcase *tc, int reorder)
   memcpy(tc->argv_copy, tc->argv, sizeof tc->argv);
 
   opt = copt_init((int) tc->argc, tc->argv_copy, reorder);
-  while (!copt_done(&opt)) {
+  while (copt_next(&opt)) {
     if (copt_opt(&opt, "x")) {
       actual_opt(tc, "x");
     } else if (copt_opt(&opt, "y")) {
