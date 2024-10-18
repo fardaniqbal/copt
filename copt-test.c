@@ -1233,7 +1233,7 @@ main(void)
       (long) failed_test_cnt, (long) total_test_cnt);
   }
   if (fail_info)
-    for (i = 0; i < sizeof fail_info / sizeof *fail_info; i++)
+    for (i = 0; fail_info[i] != NULL; i++)
       free(fail_info[i]);
   free(fail_info);
   return !!failed_test_cnt;
