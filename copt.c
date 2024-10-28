@@ -1,4 +1,4 @@
-/* copt.c - public domain command line option parsing library
+/* copt - public domain C/C++ command line option parsing library
    https://github.com/fardaniqbal/copt/ */
 #include "copt.h"
 #ifdef _MSC_VER

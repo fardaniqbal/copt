@@ -1,4 +1,7 @@
-/* copt.h - public domain command line option parsing library
+/* copt - public domain C/C++ command line option parsing library
+
+   Why should you use this instead of other command line parsing libraries?
+   How do you even use this?  These questions, and more, are answered here:
    https://github.com/fardaniqbal/copt/
 
    Example usage:
