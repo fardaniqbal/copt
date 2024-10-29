@@ -145,6 +145,16 @@ for your project than COPT.  But I doubt it ;-).
     license](https://git.suckless.org/st/file/LICENSE.html).  COPT is
     [public domain/unlicense](https://unlicense.org).
 
+* [Argparse](https://github.com/Cofyc/argparse) - pretty nice one here.
+  Quite similar to COPT in terms of functionality.
+  - Argparse uses C99 constructs (e.g. `...` in macro arguments).  COPT
+    sticks to C89, since we still have a certain widely-used compiler
+    vendor that doesn't support C99.
+  - Calls `exit()` on error.  COPT lets caller handle errors.
+  - Argparse uses [MIT
+    license](https://git.suckless.org/st/file/LICENSE.html).  COPT is
+    [public domain/unlicense](https://unlicense.org).
+
 * [Args](https://git.suckless.org/st/file/LICENSE.html) from Darren
   Mulholland - feature-rich command line parsing API.
   - Args supports options with multiple arguments.  COPT does not, unless
