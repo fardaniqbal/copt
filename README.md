@@ -21,15 +21,15 @@ int main(int argc, char *argv[])
   struct copt opt = copt_init(argc, argv, 1);
   while (copt_next(&opt)) {
     if (copt_opt(&opt, "a") {
-      /* ...handle short option "-a"... */
+      /* handle short option "-a" */
     } else if (copt_opt(&opt, "longopt")) {
-      /* ...handle long option "--longopt"... */
+      /* handle long option "--longopt" */
     } else if (copt_opt(&opt, "o|outfile")) {
-      /* ...handle both short option "-o" and long option "--outfile"... */
-      outfile = copt_arg(&opt);   /* get arg passed to option */
-    } else if (copt_opt(&opt, "color=")) {
-      /* ...handle --color[=OPTIONAL-ARG] ('=' is mandatory for arg)... */
-      color = copt_arg(&opt);     /* get optional arg passed to option */
+      /* handle both short option "-o" and long option "--outfile" */
+      outfile = copt_arg(&opt);   /* get MANDATORY arg passed to option */
+    } else if (copt_opt(&opt, "c|color")) {
+      /* handle --color[=OPTIONAL-ARG] (must have '=' for arg) */
+      color = copt_oarg(&opt);    /* get OPTIONAL arg passed to option */
     } else {
       fprintf(stderr, "unknown option '%s'\n", copt_curopt(&opt));
       usage();

@@ -6,6 +6,8 @@
 #  define _CRT_SECURE_NO_WARNINGS 1 /* proprietary MS stuff */
 #endif
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* - debug logging ----------------------------------------------------- */
@@ -17,7 +19,6 @@ static void copt_dbg_args(struct copt *opt) { (void) opt; }
 char *copt_dbg_dump(void) { return NULL; }
 #else /* debug logging */
 # include <stdarg.h>
-# include <stdio.h>
 # include <stdlib.h>
 # ifdef __GNUC__
 #   define coptfunc __extension__ __func__
@@ -126,6 +127,8 @@ copt_init(int argc, char **argv, int reorder)
   opt.idx = 0;
   opt.subidx = 0;
   opt.argidx = 0;
+  opt.noargfn = NULL;
+  opt.noarg_aux = NULL;
   opt.shortopt[0] = '\0';
   opt.reorder = !!reorder;
   return opt;
@@ -239,14 +242,12 @@ copt_next(struct copt *opt)
    string.  (e.g. OPTSPEC="F|f|foo" returns true when next option is "-F",
    "-f", or "--foo", accounting for grouped short options. */
 int
-copt_opt(struct copt *opt, const char *optspec)
+copt_opt(const struct copt *opt, const char *optspec)
 {
-  int arg_is_optional = optspec[strlen(optspec)-1] == '=';
   char *arg = opt->argv[opt->idx];
   const char *start, *end;
   size_t arglen;
   assert((arg && arg[0] == '-' && arg[1] != '\0') || !!!"not option");
-  assert(!strchr(optspec, '=') || strchr(optspec, '=')[1] == '\0');
 
   if (opt->subidx > 0) /* in (possibly grouped) short option */
     arg += opt->subidx, arglen = 1; 
@@ -257,22 +258,26 @@ copt_opt(struct copt *opt, const char *optspec)
 
   /* Search for current arg in pipe-delimited optspec. */
   for (start = optspec; *start != '\0'; start = end + (*end != '\0')) {
-    start += strspn(start, "|");
     end = strchr(start, '|');
     end = end ? end : start + strlen(start);
-    if (end > start && end[-1] == '=')  /* exclude '=' from optspec */
-      end--;
     if ((size_t) (end-start) == arglen && !memcmp(arg, start, arglen))
-      return (opt->argidx = arg_is_optional ? opt->argc : opt->argidx), 1;
+      return 1;
   }
   return 0;
 }
 
-/* After copt_opt() indicates you found an option, call this function if
-   your option expects an argument.  Returns the arg given to the option
-   matched by the last call to copt_opt(), or NULL if no arg exists. */
-char *
-copt_arg(struct copt *opt)
+static char *
+copt_noarg(const struct copt *opt)
+{
+  if (opt->noargfn)
+    return opt->noargfn(opt, opt->noarg_aux);
+  fprintf(stderr, "%s: option '%s' requires arg\n",
+          opt->argv[0], copt_curopt(opt));
+  exit(1);
+}
+
+static char *
+copt_arg_impl(struct copt *opt, int arg_is_optional)
 {
   int subidx = opt->subidx;
   int argidx = opt->argidx;
@@ -284,16 +289,28 @@ copt_arg(struct copt *opt)
       return opt->argv[opt->idx] + subidx + 1 + (ch == '=');
   } else if ((eq = strchr(opt->argv[opt->idx], '=')) != NULL)
     return eq+1;                /* --option=ARG */
-  if (argidx >= opt->argc)      /* reordered opt, no arg available */
-    return NULL;
+  if (arg_is_optional)
+    return NULL;                /* optional arg must be in argv[idx] */
+  if (argidx >= opt->argc)
+    return copt_noarg(opt);     /* reordered opt, no arg available */
   if (argidx > opt->idx)        /* reordered opt, arg available */
     copt_rotate_right(opt->argv + opt->idx + 1, argidx - opt->idx);
   if (opt->idx+1 >= opt->argc || (opt->argv[opt->idx+1][0] == '-' &&
                                   opt->argv[opt->idx+1][1] != '\0'))
-    return NULL; /* not optarg if starts with '-' but isn't _only_ '-' */
+    return copt_noarg(opt);     /* not optarg if it's just "-" */
   assert(opt->idx+1 < opt->argc);
   return opt->argv[++opt->idx]; /* optarg is the next argv item */
 }
+
+/* After copt_opt() indicates you found an option, call this function if
+   your option expects an argument.  Returns the arg given to the option
+   matched by the last call to copt_opt(). */
+char *copt_arg(struct copt *opt) { return copt_arg_impl(opt, 0); }
+
+/* After copt_opt() indicates you found an option, call this function if
+   your option expects an argument.  Returns the arg given to the option
+   matched by the last call to copt_opt(), or NULL if no arg exists. */
+char *copt_oarg(struct copt *opt) { return copt_arg_impl(opt, 1); }
 
 /* After copt_next() indicates you've consumed all options, this function
    returns index of first non-option argument in the argv array with which
@@ -309,3 +326,13 @@ int copt_idx(const struct copt *opt) { return opt->idx; }
    option with missing argument, for which idiomatic usage typically
    doesn't require making a copy. */
 char *copt_curopt(const struct copt *opt) { return opt->curopt; }
+
+/* Make copt context OPT call NOARGFN with the given AUX when copt_arg()
+   doesn't find an option's argument.  If copt_arg() doesn't find an
+   option, then it will return NOARGFN's return value. */
+void
+copt_set_noargfn(struct copt *opt, copt_errfn *noargfn, void *aux)
+{
+  opt->noargfn = noargfn;
+  opt->noarg_aux = aux;
+}

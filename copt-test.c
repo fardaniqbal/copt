@@ -315,6 +315,12 @@ test_verify(struct testcase *tc)
   failed_test_cnt++;
 }
 
+static char *
+noarg_handler(const struct copt *opt, void *aux)
+{
+  return NULL;
+}
+
 static void
 test_end(struct testcase *tc, int reorder)
 {
@@ -325,6 +331,7 @@ test_end(struct testcase *tc, int reorder)
   memcpy(tc->argv_copy, tc->argv, sizeof tc->argv);
 
   opt = copt_init((int) tc->argc, tc->argv_copy, reorder);
+  copt_set_noargfn(&opt, noarg_handler, NULL);
   while (copt_next(&opt)) {
     if (copt_opt(&opt, "x")) {
       actual_opt(tc, "x");
@@ -345,9 +352,9 @@ test_end(struct testcase *tc, int reorder)
     } else if (copt_opt(&opt, "a|multiple-with-arg")) {
       actual_opt(tc, "a|multiple-with-arg");
       actual_optarg(tc, copt_arg(&opt));
-    } else if (copt_opt(&opt, "o|optional-arg=")) {
-      actual_opt(tc, "o|optional-arg=");
-      actual_optarg(tc, copt_arg(&opt));
+    } else if (copt_opt(&opt, "o|optional-arg")) {
+      actual_opt(tc, "o|optional-arg");
+      actual_optarg(tc, copt_oarg(&opt));
     } else {
       actual_badopt(tc, copt_curopt(&opt));
     }
@@ -1021,7 +1028,7 @@ run_copt_tests(int reorder)
 
   /* options where arg itself is optional */
   TEST_BEGIN(1, 1, mkargv("-ooarg", NULL));
-  expect_opt(&tc, "o|optional-arg=");
+  expect_opt(&tc, "o|optional-arg");
   expect_optarg(&tc, "oarg");
   TEST_END();
 
@@ -1032,25 +1039,25 @@ run_copt_tests(int reorder)
 
     snprintf(optbuf, sizeof optbuf, "%s", baseopt[i]);
     TEST_BEGIN(1, 1, mkargv(optbuf, NULL));
-    expect_opt(&tc, "o|optional-arg=");
+    expect_opt(&tc, "o|optional-arg");
     expect_optarg(&tc, NULL);
     TEST_END();
 
     snprintf(optbuf, sizeof optbuf, "%s=", baseopt[i]);
     TEST_BEGIN(1, 1, mkargv(optbuf, NULL));
-    expect_opt(&tc, "o|optional-arg=");
+    expect_opt(&tc, "o|optional-arg");
     expect_optarg(&tc, "");
     TEST_END();
 
     snprintf(optbuf, sizeof optbuf, "%s=oarg", baseopt[i]);
     TEST_BEGIN(1, 1, mkargv(optbuf, NULL));
-    expect_opt(&tc, "o|optional-arg=");
+    expect_opt(&tc, "o|optional-arg");
     expect_optarg(&tc, "oarg");
     TEST_END();
 
     snprintf(optbuf, sizeof optbuf, "%s=", baseopt[i]);
     TEST_BEGIN(1, 1, mkargv(optbuf, "nonopt", NULL));
-    expect_opt(&tc, "o|optional-arg=");
+    expect_opt(&tc, "o|optional-arg");
     expect_optarg(&tc, "");
     TEST_ARGBRK();
     expect_arg(&tc, "nonopt");
@@ -1058,7 +1065,7 @@ run_copt_tests(int reorder)
 
     snprintf(optbuf, sizeof optbuf, "%s", baseopt[i]);
     TEST_BEGIN(1, 1, mkargv(optbuf, "nonopt", NULL));
-    expect_opt(&tc, "o|optional-arg=");
+    expect_opt(&tc, "o|optional-arg");
     expect_optarg(&tc, NULL);
     TEST_ARGBRK();
     expect_arg(&tc, "nonopt");
