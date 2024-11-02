@@ -4,8 +4,10 @@ Command line parsing should be basic functionality.  You shouldn't have to
 pull a bunch of dependencies into your project just to give your users a
 consistent CLI interface.
 
-COPT is a simple, no-nonsense library for parsing command line options in C
-and C++ programs.
+COPT is a no-nonsense, [single-file
+library](https://github.com/nothings/single_file_libs) for parsing command
+line options in C and C++ programs.  It aims to balance a practical feature
+set with minimalism in implementation and calling code.
 
 ## Example usage
 
@@ -43,7 +45,8 @@ int main(int argc, char *argv[])
 ## Features
 
 * [Public domain license](LICENSE).  I appreciate it if you credit me, but
-  by no means is it required.  Do what you want with it.
+  by no means is it required.  You don't have to include the LICENSE file
+  or reproduce it in your project's output.  Do what you want with COPT.
 * Written in standard ISO C89, and works as both C and C++.
 * No heap allocations.
 * No dependencies on other libraries.
@@ -55,7 +58,7 @@ int main(int argc, char *argv[])
     `--like-this`).
   * Short options can be grouped (e.g. `-a -b -c` can be given as `-abc`).
   * Can _optionally_ handle mixed options and non-option args (e.g. `myprog
-    --opt1 foo bar --opt2` will read both `--opt1` and `--opt2` as options
+    --opt1 foo bar --opt2` can read both `--opt1` and `--opt2` as options
     while treating `foo` and `bar` as non-option arguments).
   * Can _optionally_ use `=` to pass args to long _and_ short options (e.g.
     `--longopt ARG`, `--longopt=ARG`, `-sARG`, `-s=ARG`, and `-s ARG` all
