@@ -1,5 +1,7 @@
-/* copt - public domain C/C++ command line option parsing library
+/* copt v1.0.0 - public domain C/C++ command line option parsing library
    https://github.com/fardaniqbal/copt/
+
+   In ONE C or C++ file, do `#define COPT_IMPL` before you #include this.
 
    Why should you use this instead of other command line parsing libraries?
    How do you even use this?  These questions, and more, are answered here:
