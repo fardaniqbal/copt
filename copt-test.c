@@ -277,7 +277,7 @@ flog_args(size_t argc, char **argv, size_t max_width)
 static void
 test_verify(struct testcase *tc)
 {
-  char buf[71], *tmp;
+  char buf[71];
   size_t i;
   total_test_cnt++;
   sprint_args(buf, sizeof buf, tc->argc, tc->argv, sizeof buf-1);
@@ -295,9 +295,6 @@ test_verify(struct testcase *tc)
   }
   /* Test failed.  Log formatted table of expected vs actual args. */
   printf(": FAIL\n");
-  tmp = copt_dbg_dump();
-  flog("%s", tmp ? tmp : "");
-  free(tmp);
   flog("%s:%d: ", __FILE__, test_line);
   flog_args(tc->argc, tc->argv, 0);
   flog("\n");

@@ -1,4 +1,5 @@
 /* copt - public domain C/C++ command line option parsing library
+   https://github.com/fardaniqbal/copt/
 
    Why should you use this instead of other command line parsing libraries?
    How do you even use this?  These questions, and more, are answered here:
@@ -61,7 +62,6 @@ char  *copt_arg(struct copt *);           /* return arg from last opt */
 char  *copt_oarg(struct copt *);          /* same but arg is optional */
 char  *copt_curopt(const struct copt *);  /* return most recent option */
 int    copt_idx(const struct copt *);     /* current index into argv */
-char  *copt_dbg_dump(void); /* INTERNAL DEBUG USE ONLY; NOT REENTRANT */
 void   copt_set_noargfn(struct copt *, copt_errfn *, void *);
 
 #ifdef __cplusplus
