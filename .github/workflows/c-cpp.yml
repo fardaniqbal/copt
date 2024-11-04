@@ -15,7 +15,7 @@ jobs:
         sys:
           - { os: ubuntu-latest,  shell: bash,        make: make }
           - { os: macos-latest,   shell: bash,        make: make }
-          - { os: windows-latest, shell: 'msys2 {0}', make: mingw64-make }
+          - { os: windows-latest, shell: 'msys2 {0}', make: make }
     defaults:
       run:
         shell: ${{ matrix.sys.shell }}
@@ -33,19 +33,19 @@ jobs:
         #run: choco install make
         run: |
           #yes | (pacman -S make || pacman -S make)
-          for i in $(echo $PATH | tr : \\n); do
-            echo "i = $i"
-            find "$i" -name '*make*' || true
-            echo
-          done
+          #for i in $(echo $PATH | tr : \\n); do
+          #  echo "i = $i"
+          #  find "$i" -name '*make*' || true
+          #  echo
+          #done
           echo "which make = '$(which make)'"
       - name: make
         run: |
-          for i in $(echo $PATH | tr : \\n); do
-            echo "i = $i"
-            find "$i" -name '*make*' || true
-            echo
-          done
+          #for i in $(echo $PATH | tr : \\n); do
+          #  echo "i = $i"
+          #  find "$i" -name '*make*' || true
+          #  echo
+          #done
           ${{ matrix.sys.make }} clean && ${{ matrix.sys.make }} -j || true
       - name: make check
         run: |
