@@ -15,7 +15,7 @@ jobs:
         sys:
           - { os: ubuntu-latest,  shell: bash,        make: make }
           - { os: macos-latest,   shell: bash,        make: make }
-          - { os: windows-latest, shell: 'msys2 {0}', make: mingw32-make }
+          - { os: windows-latest, shell: 'msys2 {0}', make: mingw32-make.exe }
     defaults:
       run:
         shell: ${{ matrix.sys.shell }}
