@@ -29,7 +29,7 @@ jobs:
           update: true
           install: git mingw-w64-ucrt-x86_64-gcc
       - if: ${{ runner.os == 'Windows' }}
-        run: pacman -y -S make
+        run: yes | pacman -S make
       - name: make
         run: make clean && make -j
       - name: make check
