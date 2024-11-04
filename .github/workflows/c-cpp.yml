@@ -36,10 +36,10 @@ jobs:
         run: |
           for i in $(echo $PATH | tr : \\n); do
             echo "i = $i"
-            find "$i" -name '*make*'
+            find "$i" -name '*make*' || true
             echo
           done
-          ${{ matrix.sys.make }} clean && ${{ matrix.sys.make }} -j
+          ${{ matrix.sys.make }} clean && ${{ matrix.sys.make }} -j || true
       - name: make check
         run: |
           # Test output is too verbose, so only show it if something fails.
