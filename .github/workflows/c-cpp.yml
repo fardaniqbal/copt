@@ -13,9 +13,9 @@ jobs:
     strategy:
       matrix:
         sys:
-          - { os: ubuntu-latest,  shell: bash  }
-          - { os: macos-latest,   shell: bash  }
-          - { os: windows-latest, shell: 'msys2 {0}' }
+          - { os: ubuntu-latest,  shell: bash,        make: make }
+          - { os: macos-latest,   shell: bash,        make: make }
+          - { os: windows-latest, shell: 'msys2 {0}', make: mingw32-make }
     defaults:
       run:
         shell: ${{ matrix.sys.shell }}
@@ -28,16 +28,16 @@ jobs:
           msystem: UCRT64
           update: true
           install: git mingw-w64-ucrt-x86_64-gcc
-      - if: ${{ runner.os == 'Windows' }}
-        shell: powershell
-        run: choco install make
-        #run: yes | (pacman -S make || pacman -S make)
+      #- if: ${{ runner.os == 'Windows' }}
+      #  shell: powershell
+      #  run: choco install make
+      #  #run: yes | (pacman -S make || pacman -S make)
       - name: make
-        run: make clean && make -j
+        run: ${{ matrix.sys.make }} clean && ${{ matrix.sys.make }} -j
       - name: make check
         run: |
           # Test output is too verbose, so only show it if something fails.
-          testout="$(make check -j 2>&1)" &&
+          testout="$(${{ matrix.sys.make }} check -j 2>&1)" &&
           (printf '[...output omitted...]\n' &&
            printf '%s\n' "$testout" | tail -n200) ||
           (printf '%s\n' "$testout"; exit 1)
