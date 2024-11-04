@@ -33,7 +33,13 @@ jobs:
       #  run: choco install make
       #  #run: yes | (pacman -S make || pacman -S make)
       - name: make
-        run: ${{ matrix.sys.make }} clean && ${{ matrix.sys.make }} -j
+        run: |
+          for i in $(echo $PATH | tr : \\n); do
+            echo "i = $i"
+            find "$i" -name '*make*'
+            echo
+          done
+          ${{ matrix.sys.make }} clean && ${{ matrix.sys.make }} -j
       - name: make check
         run: |
           # Test output is too verbose, so only show it if something fails.
