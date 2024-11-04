@@ -13,44 +13,27 @@ jobs:
     strategy:
       matrix:
         sys:
-          - { os: ubuntu-latest,  shell: bash,        make: make }
-          - { os: macos-latest,   shell: bash,        make: make }
-          - { os: windows-latest, shell: 'msys2 {0}', make: make }
+          - { os: ubuntu-latest,  shell: bash }
+          - { os: macos-latest,   shell: bash }
+          - { os: windows-latest, shell: 'msys2 {0}' }
     defaults:
       run:
         shell: ${{ matrix.sys.shell }}
     steps:
       - uses: actions/checkout@v4
       - if: ${{ runner.os == 'Windows' }}
-        # based on https://www.msys2.org/docs/ci/
+        # Based on https://www.msys2.org/docs/ci/
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
           update: true
           install: git mingw-w64-ucrt-x86_64-gcc make
-      - if: ${{ runner.os == 'Windows' }}
-        #shell: powershell
-        #run: choco install make
-        run: |
-          #yes | (pacman -S make || pacman -S make)
-          #for i in $(echo $PATH | tr : \\n); do
-          #  echo "i = $i"
-          #  find "$i" -name '*make*' || true
-          #  echo
-          #done
-          echo "which make = '$(which make)'"
       - name: make
-        run: |
-          #for i in $(echo $PATH | tr : \\n); do
-          #  echo "i = $i"
-          #  find "$i" -name '*make*' || true
-          #  echo
-          #done
-          ${{ matrix.sys.make }} clean && ${{ matrix.sys.make }} -j || true
+        run: make clean && make -j
       - name: make check
         run: |
-          # Test output is too verbose, so only show it if something fails.
-          testout="$(${{ matrix.sys.make }} check -j 2>&1)" &&
-          (printf '[...output omitted...]\n' &&
-           printf '%s\n' "$testout" | tail -n200) ||
-          (printf '%s\n' "$testout"; exit 1)
+          # Test output is too verbose, so just show last N lines.
+          testout="$(make check -j 2>&1)" &&
+          (printf '[...beginning of test output omitted...]\n' &&
+           printf '%s\n' "$testout" | tail -n100) ||
+          (printf '%s\n' "$testout" | tail -n500; exit 1)
