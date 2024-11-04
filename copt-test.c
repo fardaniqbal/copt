@@ -37,7 +37,7 @@ flog_ensure_cap(void)
   else
     info = (char **) realloc(info, cnt * sizeof *fail_info);
   if (!info)
-    printf("%s:%d: out of memory\n", __FILE__, test_line), exit(1);
+    fprintf(stderr, "flog_ensure_cap(): out of memory\n"), exit(1);
   if (cnt > last_cnt)
     info[cnt-1] = NULL;
   fail_info = info;
@@ -58,7 +58,7 @@ flog(const char *fmt, ...)
   int rc, basecap, cap = 1;
   va_list ap;
   if (buf == NULL && (buf = (char *) calloc(1,1)) == NULL)
-    printf("not enough memory for log\n"), exit(1);
+    fprintf(stderr, "flog(): out of memory\n"), exit(1);
   basecap = strlen(buf);
   cp = buf + basecap;
 
@@ -69,7 +69,7 @@ flog(const char *fmt, ...)
     /* Just ignore int overflow. */
     cap = rc >= 0 ? rc+1 : (basecap+cap) * 2 - basecap;
     if ((buf = (char *) realloc(buf, basecap + cap)) == NULL)
-      printf("not enough memory for fmt '%s'\n", fmt), exit(1);
+      fprintf(stderr, "not enough memory for fmt '%s'\n", fmt), exit(1);
     cp = buf + basecap;
     va_start(ap, fmt);
   }
@@ -100,7 +100,7 @@ mkargv(const char *first, ...)
   return arr;
 
 no_mem:
-  printf("out of memory\n");
+  fprintf(stderr, "out of memory\n");
   exit(1);
 }
 
@@ -121,7 +121,7 @@ argtype_str(enum argtype type)
     case ARGTYPE_OPTARG:  return "OPTARG";
     case ARGTYPE_ARG:     return "ARG";
     case ARGTYPE_BADOPT:  return "BADOPT";
-    default: printf("bad argtype %d\n", type); exit(1);
+    default: fprintf(stderr, "bad argtype %d\n", type); exit(1);
   }
 }
 
@@ -184,7 +184,7 @@ my_strdup(const char *str)
   void *mem = nbyte ? malloc(nbyte) : NULL;
   if (mem != NULL || nbyte == 0)
     return (char *) memcpy(mem, str, nbyte);
-  printf("failed to duplicate %lu-byte string '%s'\n", (long) nbyte, str);
+  fprintf(stderr, "my_strdup('%s'): out of memory\n", str);
   exit(1);
 }
 
@@ -281,7 +281,6 @@ test_verify(struct testcase *tc)
   size_t i;
   total_test_cnt++;
   sprint_args(buf, sizeof buf, tc->argc, tc->argv, sizeof buf-1);
-  fputs(buf, stdout);
 
   if (tc->expect_cnt == tc->actual_cnt) {
     /* Check if actual args differ from expected args. */
@@ -289,12 +288,13 @@ test_verify(struct testcase *tc)
       if (!arg_eq(&tc->expect[i], &tc->actual[i]))
         break;
     if (i == tc->expect_cnt) {
-      printf(": OK\n");
+      printf("%s: OK\n", buf);
       return;
     }
   }
   /* Test failed.  Log formatted table of expected vs actual args. */
-  printf(": FAIL\n");
+  fflush(stdout);
+  fprintf(stderr, "%s: FAIL\n", buf);
   flog("%s:%d: ", __FILE__, test_line);
   flog_args(tc->argc, tc->argv, 0);
   flog("\n");
@@ -1226,14 +1226,15 @@ main(void)
   size_t i;
   run_copt_tests(0);
   run_copt_tests(1);
+  fflush(NULL);
 
-  printf("----\n");
   if (failed_test_cnt == 0)
-    printf("Passed all %lu tests\n", (long) total_test_cnt);
+    printf("----\nPassed all %lu tests\n", (long) total_test_cnt);
   else {
+    fprintf(stderr, "----\n");
     for (i = 0; i < failed_test_cnt; i++)
-      printf("\n%s\n", fail_info[i]);
-    printf("FAILED %lu of %lu tests\n",
+      fprintf(stderr, "\n%s\n", fail_info[i]);
+    fprintf(stderr, "----\nFAILED %lu of %lu tests\n",
       (long) failed_test_cnt, (long) total_test_cnt);
   }
   if (fail_info)
