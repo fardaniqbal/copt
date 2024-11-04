@@ -27,12 +27,12 @@ jobs:
         with:
           msystem: UCRT64
           update: true
-          install: git mingw-w64-ucrt-x86_64-gcc
+          install: git mingw-w64-ucrt-x86_64-gcc make
       - if: ${{ runner.os == 'Windows' }}
         #shell: powershell
         #run: choco install make
         run: |
-          yes | (pacman -S make || pacman -S make)
+          #yes | (pacman -S make || pacman -S make)
           for i in $(echo $PATH | tr : \\n); do
             echo "i = $i"
             find "$i" -name '*make*' || true
