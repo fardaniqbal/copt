@@ -31,15 +31,15 @@ flog_ensure_cap(void)
 {
   char **info = fail_info;
   static size_t last_cnt;
-  size_t cnt = failed_test_cnt + 1;
+  size_t i, cnt = failed_test_cnt + 1;
   if (!info)
     info = (char **) calloc(cnt, sizeof *fail_info);
   else
     info = (char **) realloc(info, cnt * sizeof *fail_info);
   if (!info)
     fprintf(stderr, "flog_ensure_cap(): out of memory\n"), exit(1);
-  if (cnt > last_cnt)
-    info[cnt-1] = NULL;
+  for (i = last_cnt; i < cnt; i++)
+    info[i] = NULL;
   fail_info = info;
   last_cnt = cnt;
   return fail_info[failed_test_cnt];
@@ -1238,7 +1238,7 @@ main(void)
       (long) failed_test_cnt, (long) total_test_cnt);
   }
   if (fail_info)
-    for (i = 0; fail_info[i] != NULL; i++)
+    for (i = 0; i < failed_test_cnt; i++)
       free(fail_info[i]);
   free(fail_info);
   return !!failed_test_cnt;
