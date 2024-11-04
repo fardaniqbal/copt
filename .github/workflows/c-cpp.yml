@@ -29,7 +29,7 @@ jobs:
           update: true
           install: git mingw-w64-ucrt-x86_64-gcc
       - if: ${{ runner.os == 'Windows' }}
-        shell: powershell
+        #shell: powershell
         run: |
           choco install make
           for i in $(echo $PATH | tr : \\n); do
