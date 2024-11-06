@@ -69,8 +69,8 @@ your project than COPT.  But I doubt it ;-).
   - Calls `exit()` on error.  COPT calls `exit()` _by default_, but also
     lets caller set custom error handlers.
 
-* [Args](https://git.suckless.org/st/file/LICENSE.html) from Darren
-  Mulholland - feature-rich command line parsing API.
+* [Args](https://github.com/dmulholl/args) from Darren Mulholland -
+  feature-rich command line parsing API.
   - License:
     [0BSD](https://github.com/dmulholl/args/blob/master/license.txt).
   - Args supports options with multiple arguments.  COPT does not, unless
