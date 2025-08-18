@@ -110,8 +110,8 @@ link](alternatives.md)).
   arguments with no way for caller to override such behavior.  (COPT also
   calls `exit()` but only _by default_, and lets caller set custom error
   handlers.)
-* [Args](https://git.suckless.org/st/file/LICENSE.html) - substantial code
-  size for a command line parser, and uses heap allocation.
+* [D. Mulholland's Args](https://github.com/dmulholl/args) - substantial
+  code size for a command line parser, and uses heap allocation.
 * [James Theiler's OPT](https://salsa.debian.org/debian/opt) - includes the
   kitchen sink, and is generally just _way_ too overkill when all you want
   to do is parse a command line.
