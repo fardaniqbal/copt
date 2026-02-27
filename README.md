@@ -15,30 +15,40 @@ set with minimalism in implementation and calling code.
 #define COPT_IMPL
 #include "copt.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 int main(int argc, char *argv[])
 {
+  int got_flag_a = 0;
+  int got_flag_longopt = 0;
   const char *color = "auto";
   char *outfile = NULL;
   char *infile;
   struct copt opt = copt_init(argc, argv, 1);
   while (copt_next(&opt)) {
     if (copt_opt(&opt, "a")) {
-      /* handle short option "-a" */
+      /* handle short option "-a" (works even if grouped; e.g., "-ac") */
+      got_flag_a = 1;
     } else if (copt_opt(&opt, "longopt")) {
       /* handle long option "--longopt" */
+      got_flag_longopt = 1;
     } else if (copt_opt(&opt, "o|outfile")) {
       /* handle both short option "-o" and long option "--outfile" */
       outfile = copt_arg(&opt);   /* get MANDATORY arg passed to option */
     } else if (copt_opt(&opt, "c|color")) {
-      /* handle --color[=OPTIONAL-ARG] (must have '=' for arg) */
+      /* handle both -c=ARG and --color=ARG (OPTIONAL arg requires '=') */
       color = copt_oarg(&opt);    /* get OPTIONAL arg passed to option */
     } else {
       fprintf(stderr, "unknown option '%s'\n", copt_curopt(&opt));
-      usage();
+      exit(2);
     }
   }
-  infile = argv[copt_idx(&opt)];  /* handle non-option args */
+  /* handle non-option args (i.e., positional args) */
+  if (copt_idx(&opt) != argc-1) {
+    fprintf(stderr, "expected exactly ONE non-option arg\n");
+    exit(2);
+  }
+  infile = argv[copt_idx(&opt)];
   /* ... etc ... */
 }
 ```
