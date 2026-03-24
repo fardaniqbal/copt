@@ -8,7 +8,7 @@
    https://github.com/fardaniqbal/copt/
 
    Example usage:
-   
+
    int got_a = 0;
    int got_withducks = 0;
    char *color = "default";
@@ -235,7 +235,7 @@ copt_opt(const struct copt *opt, const char *optspec)
   else                 /* in --long option */
     arg += 2, arglen = strlen(arg);
   if ((end = strchr(arg, '=')) != NULL) /* --opt=ARG form */
-    arglen = arglen < (size_t) (end-arg) ? arglen : end-arg;
+    arglen = arglen < (size_t) (end-arg) ? arglen : (size_t) (end-arg);
 
   /* Search for current arg in pipe-delimited optspec. */
   for (start = optspec; *start != '\0'; start = end + (*end != '\0')) {
