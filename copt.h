@@ -1,4 +1,4 @@
-/* copt v1.0.0 - public domain C/C++ command line option parsing library
+/* copt v1.0.1 - public domain C/C++ command line option parsing library
    https://github.com/fardaniqbal/copt/
 
    In ONE C or C++ file, do `#define COPT_IMPL` before you #include this.
