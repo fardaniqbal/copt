@@ -2,3 +2,4 @@
 *.exe
 copt-test
 copt-test-cpp
+compile_commands.json
