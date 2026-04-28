@@ -1,0 +1,7 @@
+Documentation:
+  CommentFormat: Markdown
+---
+If:
+  PathMatch: [copt\.h]
+CompileFlags:
+  Add: [-DCOPT_IMPL]
