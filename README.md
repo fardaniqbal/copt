@@ -2,7 +2,7 @@
 
 Command line parsing should be basic functionality.  You shouldn't have to
 pull a bunch of dependencies into your project just to give your users a
-consistent CLI interface.
+consistent CLI that conforms to industry-standard established conventions.
 
 COPT is a no-nonsense, [single-file
 library](https://github.com/nothings/single_file_libs) for parsing command
