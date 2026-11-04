@@ -67,7 +67,8 @@ int main(int argc, char *argv[])
 * Follows common Unix command line conventions:
   * Handles short options (e.g. `-a`) and long options (e.g.
     `--like-this`).
-  * Short options can be grouped (e.g. `-a -b -c` can be given as `-abc`).
+  * Recognizes grouped short options (e.g. `-abc` is presented to the
+    caller as if given as individual `-a`, `-b`, and `-c` options).
   * Can _optionally_ handle mixed options and non-option args (e.g. `myprog
     --opt1 foo bar --opt2` can read both `--opt1` and `--opt2` as options
     while treating `foo` and `bar` as non-option arguments).
